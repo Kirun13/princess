@@ -3,6 +3,18 @@ import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+/** Sample board size from N(7.5, 1.0), accepting only 5–10. */
+function sampleSize(): number {
+  while (true) {
+    // Box-Muller transform for normal distribution
+    const u = 1 - Math.random();
+    const v = Math.random();
+    const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    const n = Math.round(7.5 + z * 1.0);
+    if (n >= 5 && n <= 10) return n;
+  }
+}
+
 type PuzzleRecord = {
   grid: number[][];
   solution: number[][];
@@ -51,7 +63,7 @@ export async function GET(req: NextRequest) {
           ? { "X-API-Key": process.env.PUZZLE_GENERATOR_API_KEY }
           : {}),
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ size: sampleSize() }),
     });
     if (!res.ok) throw new Error(`Generator service returned ${res.status}`);
     puzzleData = (await res.json()) as PuzzleRecord;
