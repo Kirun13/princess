@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String        @id @default(cuid())
+  username      String        @unique
+  email         String        @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime      @default(now())
+  accounts      Account[]
+  sessions      Session[]
+  solves        Solve[]
+  achievements  Achievement[]
+  ratings       LevelRating[]
+  settings      UserSettings?
+}
+
+model Puzzle {
+  id             String          @id @default(cuid())
+  grid           Json
+  solution       Json
+  hash           String          @unique
+  size           Int
+  difficulty     String
+  level          Level?
+  dailyChallenge DailyChallenge?
+}
+
+model Level {
+  id       String        @id @default(cuid())
+  number   Int           @unique
+  name     String
+  puzzleId String        @unique
+  puzzle   Puzzle        @relation(fields: [puzzleId], references: [id])
+  solves   Solve[]
+  ratings  LevelRating[]
+}
+
+model DailyChallenge {
+  id       String        @id @default(cuid())
+  date     DateTime      @unique
+  number   Int           @unique
+  puzzleId String        @unique
+  puzzle   Puzzle        @relation(fields: [puzzleId], references: [id])
+  solves   Solve[]
+  ratings  LevelRating[]
+}
+
+model Solve {
+  id               String          @id @default(cuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  levelId          String?
+  level            Level?          @relation(fields: [levelId], references: [id])
+  dailyChallengeId String?
+  dailyChallenge   DailyChallenge? @relation(fields: [dailyChallengeId], references: [id])
+  timeMs           Int
+  completedAt      DateTime        @default(now())
+  isPersonalBest   Boolean         @default(false)
+
+  @@unique([userId, levelId])
+  @@unique([userId, dailyChallengeId])
+}
+
+model Achievement {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  type       String
+  unlockedAt DateTime @default(now())
+}
+
+model LevelRating {
+  id               String          @id @default(cuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  levelId          String?
+  level            Level?          @relation(fields: [levelId], references: [id])
+  dailyChallengeId String?
+  dailyChallenge   DailyChallenge? @relation(fields: [dailyChallengeId], references: [id])
+  rating           Int
+
+  @@unique([userId, levelId])
+  @@unique([userId, dailyChallengeId])
+}
+
+model UserSettings {
+  userId             String  @id
+  user               User    @relation(fields: [userId], references: [id])
+  soundEffects       Boolean @default(true)
+  confirmReset       Boolean @default(false)
+  highlightConflicts Boolean @default(true)
+  showTimer          Boolean @default(true)
+  theme              String  @default("dark")
+  uiFont             String  @default("JetBrains Mono")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

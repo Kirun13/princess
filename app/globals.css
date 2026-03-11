@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+/* ─── Design System — Midnight Puzzle / Cyber-Noir ─── */
+:root {
+  /* ── Core Surfaces ────────────────────────────── */
+  --bg-void:           #0D0D12;
+  --bg-base:           #0D1117;
+  --surface-01:        #141420;
+  --surface-02:        #0D0D18;
+  --surface-success:   #0D180D;
+
+  /* ── Borders ──────────────────────────────────── */
+  --border-subtle:     #1E1E2E;
+  --border-default:    #2A2A3A;
+  --border-nav:        #21262D;
+
+  /* ── Text ─────────────────────────────────────── */
+  --text-primary:      #F0F0FF;
+  --text-muted:        #4A4A6A;
+  --text-placeholder:  #3A3A4A;
+
+  /* ── Brand ────────────────────────────────────── */
+  --brand:             #7C3AED;
+  --brand-light:       #8B5CF6;
+  --gradient-brand:    linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%);
+  --gradient-brand-success: linear-gradient(90deg, #7C3AED 0%, #8B5CF6 50%, #22C55E 100%);
+
+  /* ── Functional ───────────────────────────────── */
+  --color-success:     #22C55E;
+  --color-warning:     #F59E0B;
+  --color-error:       #EF4444;
+
+  /* ── Glow Effects ─────────────────────────────── */
+  --glow-xl:   0px 0px 80px rgba(124,58,237,.188), 0px 40px 80px rgba(0,0,0,.502);
+  --glow-lg:   0px 0px 24px rgba(124,58,237,.251);
+  --glow-md:   0px 0px 20px rgba(124,58,237,.145);
+  --glow-sm:   0px 0px 12px rgba(124,58,237,.188);
+
+  /* ── Board Regions ────────────────────────────── */
+  --region-red:    #E74C3C;
+  --region-teal:   #1ABC9C;
+  --region-gold:   #F1C40F;
+  --region-green:  #2ECC71;
+  --region-purple: #9B59B6;
+  --region-blue:   #3498DB;
+  --region-orange: #E67E22;
+  --region-pink:   #E91E8C;
+
+  /* ── Legacy compat (keeps existing Tailwind classes working) ── */
+  --bg:          #0D0D12;
+  --bg-card:     #141420;
+  --border:      #1E1E2E;
+  --text:        #F0F0FF;
+  --text-muted:  #4A4A6A;
+  --accent:      #7C3AED;
+  --accent-hover: #6d28d9;
+  --error:       #EF4444;
+  --success:     #22C55E;
+
+  --background: var(--bg-void);
+  --foreground: var(--text-primary);
+}
+
+[data-theme="light"] {
+  --bg:          #f8f8ff;
+  --bg-void:     #f8f8ff;
+  --bg-card:     #ffffff;
+  --surface-01:  #ffffff;
+  --surface-02:  #f0f0f8;
+  --border:      #e2e2f0;
+  --border-subtle: #e2e2f0;
+  --border-default: #d0d0e0;
+  --border-nav:  #e2e2f0;
+  --text:        #0D0D12;
+  --text-primary: #0D0D12;
+  --text-muted:  #6B6B8A;
+  --text-placeholder: #9999b0;
+
+  --background: var(--bg);
+  --foreground: var(--text);
+
+  /* Keep brand/accent same for both themes */
+  --brand:         #7C3AED;
+  --brand-light:   #8B5CF6;
+  --gradient-brand: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%);
+  --gradient-brand-success: linear-gradient(90deg, #7C3AED 0%, #8B5CF6 50%, #22C55E 100%);
+
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error:   #EF4444;
+  --success:       #22C55E;
+  --error:         #EF4444;
+  --accent:        #7C3AED;
+  --accent-hover:  #6d28d9;
+
+  --glow-xl:   0px 0px 60px rgba(124,58,237,.12), 0px 20px 60px rgba(0,0,0,.08);
+  --glow-lg:   0px 0px 18px rgba(124,58,237,.18);
+  --glow-md:   0px 0px 14px rgba(124,58,237,.12);
+  --glow-sm:   0px 0px 8px rgba(124,58,237,.12);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-inter), Inter, system-ui, sans-serif;
+}
+
+/* ── Utility: ambient purple glow overlay ── */
+.bg-ambient-purple {
+  position: relative;
+}
+.bg-ambient-purple::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 30% 40%, rgba(124,58,237,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Navbar interactive links ── */
+.nav-link {
+  color: var(--text-muted);
+  transition: color 150ms, background 150ms;
+}
+.nav-link:hover {
+  color: var(--text-primary);
+  background: var(--border-subtle);
+}
+
+.sign-in-btn {
+  background: var(--gradient-brand);
+  box-shadow: 0px 0px 24px rgba(124,58,237,0.25);
+  transition: filter 150ms, box-shadow 150ms;
+}
+.sign-in-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0px 0px 32px rgba(124,58,237,0.4);
+}
+
+/* ── Game cell states ── */
+.cell-conflict {
+  background-color: #EF444430 !important;
+  border-color: #EF444480 !important;
+  animation: conflict-flash 400ms ease;
+}
+
+@keyframes conflict-flash {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
