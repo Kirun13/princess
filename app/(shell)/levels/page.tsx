@@ -14,7 +14,7 @@ export default async function LevelsPage() {
   try {
     const dbLevels = await db.level.findMany({
       orderBy: { number: "asc" },
-      include: { puzzle: { select: { size: true, difficulty: true } } },
+      include: { puzzle: { select: { size: true, difficulty: true, avgRating: true, ratingCount: true } } },
     });
 
     const solveMap: Record<string, LevelWithSolve["solve"]> = {};
@@ -41,6 +41,8 @@ export default async function LevelsPage() {
       name: l.name,
       difficulty: l.puzzle.difficulty,
       size: l.puzzle.size,
+      avgRating: l.puzzle.avgRating,
+      ratingCount: l.puzzle.ratingCount,
       solve: solveMap[l.id] ?? null,
     }));
   } catch {

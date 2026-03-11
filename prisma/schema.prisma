@@ -29,6 +29,8 @@ model Puzzle {
   hash           String          @unique
   size           Int
   difficulty     String
+  avgRating      Float           @default(0)
+  ratingCount    Int             @default(0)
   level          Level?
   dailyChallenge DailyChallenge?
 }

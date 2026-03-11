@@ -51,6 +51,8 @@ interface LevelCompleteModalProps {
   difficulty: string;
   isAuthenticated: boolean;
   userRating: number | null;
+  avgRating: number;
+  ratingCount: number;
 }
 
 function StarRating({ stars }: { stars: 1 | 2 | 3 }) {
@@ -87,13 +89,25 @@ interface UserRatingWidgetProps {
   levelId?: string;
   dailyChallengeId?: string;
   initialRating: number | null;
+  avgRating: number;
+  ratingCount: number;
   isAuthenticated: boolean;
 }
+
+const STAR_LABELS: Record<number, string> = {
+  1: "Easy",
+  2: "Medium",
+  3: "Hard",
+  4: "Expert",
+  5: "Expert",
+};
 
 function UserRatingWidget({
   levelId,
   dailyChallengeId,
   initialRating,
+  avgRating,
+  ratingCount,
   isAuthenticated,
 }: UserRatingWidgetProps) {
   const [hovered, setHovered] = useState<number | null>(null);
@@ -123,7 +137,7 @@ function UserRatingWidget({
     return (
       <div className="text-center">
         <p className="text-xs mb-1" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace" }}>
-          Rate this puzzle
+          Rate difficulty
         </p>
         <a
           href="/auth/sign-in"
@@ -132,6 +146,11 @@ function UserRatingWidget({
         >
           Sign in to rate →
         </a>
+        {ratingCount > 0 && (
+          <p className="text-xs mt-2" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace" }}>
+            ★ {avgRating.toFixed(1)} · {ratingCount} {ratingCount === 1 ? "rating" : "ratings"}
+          </p>
+        )}
       </div>
     );
   }
@@ -139,10 +158,16 @@ function UserRatingWidget({
   return (
     <div className="text-center">
       <p
-        className="text-xs mb-2 uppercase tracking-[1px]"
+        className="text-xs mb-0.5 uppercase tracking-[1px]"
         style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace" }}
       >
-        Rate this puzzle
+        Rate difficulty
+      </p>
+      <p
+        className="text-xs mb-2"
+        style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace", opacity: 0.6 }}
+      >
+        1 = Easy · 5 = Expert
       </p>
       <div className="flex gap-1 justify-center mb-1">
         {[1, 2, 3, 4, 5].map((star) => (
@@ -164,7 +189,7 @@ function UserRatingWidget({
               padding: "2px",
               cursor: ratingMutation.isPending ? "not-allowed" : "pointer",
             }}
-            aria-label={`Rate ${star} out of 5`}
+            aria-label={`Rate ${star} — ${STAR_LABELS[star]}`}
           >
             ★
           </button>
@@ -185,6 +210,11 @@ function UserRatingWidget({
           {ratingMutation.error.message}
         </p>
       )}
+      {ratingCount > 0 && (
+        <p className="text-xs mt-2" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace", opacity: 0.7 }}>
+          ★ {avgRating.toFixed(1)} · {ratingCount} {ratingCount === 1 ? "rating" : "ratings"}
+        </p>
+      )}
     </div>
   );
 }
@@ -197,6 +227,8 @@ export function LevelCompleteModal({
   difficulty,
   isAuthenticated,
   userRating,
+  avgRating,
+  ratingCount,
 }: LevelCompleteModalProps) {
   const isSolved = useGameStore((s) => s.isSolved);
   const queens = useGameStore((s) => s.queens);
@@ -429,6 +461,8 @@ export function LevelCompleteModal({
                     levelId={levelId}
                     dailyChallengeId={dailyChallengeId}
                     initialRating={userRating}
+                    avgRating={avgRating}
+                    ratingCount={ratingCount}
                     isAuthenticated={isAuthenticated}
                   />
                 </div>

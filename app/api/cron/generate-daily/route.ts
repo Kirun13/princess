@@ -44,14 +44,21 @@ export async function GET(req: NextRequest) {
   // Generate a puzzle via Python generator
   let puzzleData: PuzzleRecord;
 
-  // Option B: PUZZLE_GENERATOR_URL env var points to a Python microservice
+  // Option B: PUZZLE_GENERATOR_URL env var points to the FastAPI microservice
   if (process.env.PUZZLE_GENERATOR_URL) {
     try {
-      const res = await fetch(`${process.env.PUZZLE_GENERATOR_URL}?size=8&count=1`);
+      const res = await fetch(`${process.env.PUZZLE_GENERATOR_URL}/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(process.env.PUZZLE_GENERATOR_API_KEY
+            ? { "X-API-Key": process.env.PUZZLE_GENERATOR_API_KEY }
+            : {}),
+        },
+        body: JSON.stringify({}),
+      });
       if (!res.ok) throw new Error(`Generator service returned ${res.status}`);
-      const arr = (await res.json()) as PuzzleRecord[];
-      if (!arr.length) throw new Error("Generator service returned empty array");
-      puzzleData = arr[0];
+      puzzleData = (await res.json()) as PuzzleRecord;
     } catch (err) {
       console.error("[cron/generate-daily] Microservice failed:", err);
       return NextResponse.json({ error: "Puzzle generation failed" }, { status: 500 });

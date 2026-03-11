@@ -7,6 +7,8 @@ export type LevelWithSolve = {
   name: string;
   difficulty: string;
   size: number;
+  avgRating: number;
+  ratingCount: number;
   solve?: {
     timeMs: number;
     completedAt: Date;
@@ -69,7 +71,7 @@ export default function LevelCard({ level }: Props) {
       </div>
 
       {/* Badges */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span
           className="text-xs font-bold px-3 py-1 rounded-full border capitalize"
           style={{
@@ -92,6 +94,19 @@ export default function LevelCard({ level }: Props) {
         >
           {level.size}×{level.size}
         </span>
+        {level.ratingCount > 0 && (
+          <span
+            className="text-xs px-2 py-1 rounded-full"
+            style={{
+              fontFamily: "var(--font-mono), monospace",
+              color: "#F59E0B",
+              background: "#F59E0B15",
+              border: "1px solid #F59E0B40",
+            }}
+          >
+            ★ {level.avgRating.toFixed(1)} ({level.ratingCount})
+          </span>
+        )}
       </div>
 
       {/* Best time or prompt */}

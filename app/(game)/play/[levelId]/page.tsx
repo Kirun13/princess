@@ -17,7 +17,7 @@ export default async function LevelPlayPage({ params }: PageProps) {
     where: { id: levelId },
     include: {
       puzzle: {
-        select: { id: true, size: true, difficulty: true, grid: true },
+        select: { id: true, size: true, difficulty: true, grid: true, avgRating: true, ratingCount: true },
       },
     },
   });
@@ -62,6 +62,8 @@ export default async function LevelPlayPage({ params }: PageProps) {
       confirmReset={settings?.confirmReset ?? false}
       isAuthenticated={!!session?.user?.id}
       userRating={existingRating?.rating ?? null}
+      avgRating={level.puzzle.avgRating}
+      ratingCount={level.puzzle.ratingCount}
     />
   );
 }

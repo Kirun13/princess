@@ -24,6 +24,7 @@ export default async function DailyPage() {
     db.dailyChallenge.findFirst({
       where: { date: { lte: todayEnd } },
       orderBy: { date: "desc" },
+      include: { puzzle: { select: { avgRating: true, ratingCount: true } } },
     }),
     db.dailyChallenge.findMany({
       where: { date: { lt: todayStart } },
@@ -118,6 +119,17 @@ export default async function DailyPage() {
                 <p className="text-sm text-[var(--text-muted)] mt-1">
                   {formatDate(challenge.date)}
                 </p>
+                {challenge.puzzle.ratingCount > 0 && (
+                  <p
+                    className="text-sm mt-2"
+                    style={{ fontFamily: "var(--font-mono), monospace", color: "#F59E0B" }}
+                  >
+                    ★ {challenge.puzzle.avgRating.toFixed(1)}{" "}
+                    <span style={{ color: "var(--text-muted)" }}>
+                      ({challenge.puzzle.ratingCount} {challenge.puzzle.ratingCount === 1 ? "rating" : "ratings"})
+                    </span>
+                  </p>
+                )}
               </div>
               <CountdownTimer />
             </div>

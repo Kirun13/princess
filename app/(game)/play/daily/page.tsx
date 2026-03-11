@@ -15,7 +15,7 @@ export default async function DailyPlayPage() {
     orderBy: { date: "desc" },
     include: {
       puzzle: {
-        select: { id: true, size: true, difficulty: true, grid: true },
+        select: { id: true, size: true, difficulty: true, grid: true, avgRating: true, ratingCount: true },
       },
     },
   });
@@ -76,6 +76,8 @@ export default async function DailyPlayPage() {
       confirmReset={settings?.confirmReset ?? false}
       isAuthenticated={!!session?.user?.id}
       userRating={existingRating?.rating ?? null}
+      avgRating={challenge.puzzle.avgRating}
+      ratingCount={challenge.puzzle.ratingCount}
     />
   );
 }

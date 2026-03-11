@@ -21,6 +21,8 @@ interface GameClientProps {
   confirmReset?: boolean;
   isAuthenticated: boolean;
   userRating?: number | null;
+  avgRating: number;
+  ratingCount: number;
 }
 
 export function GameClient({
@@ -35,6 +37,8 @@ export function GameClient({
   confirmReset,
   isAuthenticated,
   userRating,
+  avgRating,
+  ratingCount,
 }: GameClientProps) {
   const router = useRouter();
   const isPaused = useGameStore((s) => s.isPaused);
@@ -100,6 +104,8 @@ export function GameClient({
         difficulty={difficulty}
         isAuthenticated={isAuthenticated}
         userRating={userRating ?? null}
+        avgRating={avgRating}
+        ratingCount={ratingCount}
       />
     </div>
   );
