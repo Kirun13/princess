@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execSync } from "child_process";
-import { readFileSync, unlinkSync, existsSync } from "fs";
-import path from "path";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -44,50 +41,25 @@ export async function GET(req: NextRequest) {
   // Generate a puzzle via Python generator
   let puzzleData: PuzzleRecord;
 
-  // Option B: PUZZLE_GENERATOR_URL env var points to the FastAPI microservice
-  if (process.env.PUZZLE_GENERATOR_URL) {
-    try {
-      const res = await fetch(`${process.env.PUZZLE_GENERATOR_URL}/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(process.env.PUZZLE_GENERATOR_API_KEY
-            ? { "X-API-Key": process.env.PUZZLE_GENERATOR_API_KEY }
-            : {}),
-        },
-        body: JSON.stringify({}),
-      });
-      if (!res.ok) throw new Error(`Generator service returned ${res.status}`);
-      puzzleData = (await res.json()) as PuzzleRecord;
-    } catch (err) {
-      console.error("[cron/generate-daily] Microservice failed:", err);
-      return NextResponse.json({ error: "Puzzle generation failed" }, { status: 500 });
-    }
-  } else {
-    // Option A: spawn local Python process (works in dev / self-hosted)
-    const tmpPath = path.join("/tmp", `princess_daily_${Date.now()}.json`);
-    try {
-      const generatorScript = path.join(
-        process.cwd(),
-        "..",
-        "py_level_generator",
-        "generate_puzzles.py"
-      );
-      execSync(
-        `python "${generatorScript}" --count 1 --n 8 --out "${tmpPath}"`,
-        { timeout: 120_000, encoding: "utf-8" }
-      );
-      const raw = readFileSync(tmpPath, "utf-8");
-      const arr = JSON.parse(raw) as PuzzleRecord[];
-      if (!arr.length) throw new Error("Generator returned empty array");
-      puzzleData = arr[0];
-    } catch (err) {
-      console.error("[cron/generate-daily] Python generator failed:", err);
-      return NextResponse.json({ error: "Puzzle generation failed" }, { status: 500 });
-    } finally {
-      if (existsSync(tmpPath)) unlinkSync(tmpPath);
-    }
+  // PUZZLE_GENERATOR_URL env var points to the FastAPI microservice
+  try {
+    const res = await fetch(`${process.env.PUZZLE_GENERATOR_URL}/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.PUZZLE_GENERATOR_API_KEY
+          ? { "X-API-Key": process.env.PUZZLE_GENERATOR_API_KEY }
+          : {}),
+      },
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) throw new Error(`Generator service returned ${res.status}`);
+    puzzleData = (await res.json()) as PuzzleRecord;
+  } catch (err) {
+    console.error("[cron/generate-daily] Microservice failed:", err);
+    return NextResponse.json({ error: "Puzzle generation failed" }, { status: 500 });
   }
+  
 
   // Upsert puzzle (deduplicate by hash)
   let puzzle = await db.puzzle.findUnique({ where: { hash: puzzleData.hash } });
