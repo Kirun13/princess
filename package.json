@@ -14,6 +14,9 @@
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
+  "overrides": {
+    "@auth/core": "0.41.1"
+  },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/adapter-pg": "^7.4.2",
@@ -31,7 +34,7 @@
     "jose": "^6.2.0",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^7.0.13",
     "prisma": "^7.4.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
