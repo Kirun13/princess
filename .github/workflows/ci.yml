@@ -32,11 +32,11 @@ jobs:
         working-directory: princess-web
         run: npm run lint
 
-        - name: Type Check
+      - name: Type Check
         working-directory: princess-web
         run: npx tsc --noEmit
 
-        - name: Build
+      - name: Build
         working-directory: princess-web
         run: npm run build
 
