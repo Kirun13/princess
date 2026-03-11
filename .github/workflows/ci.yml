@@ -14,3 +14,38 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
       NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: 
+          node-version: 20
+          cache: npm
+          cache-dependency-path: princess-web/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: princess-web
+        run: npm-ci
+
+      - name: Generate Prisma client
+        working-directory: princess-web
+        run: npm run lint
+
+        - name: Type Check
+        working-directory: princess-web
+        run: npx tsc --noEmit
+
+        - name: Build
+        working-directory: princess-web
+        run: npm run build
+
+      
+
+      
+
+
+
+
+
+      
