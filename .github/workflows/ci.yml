@@ -25,19 +25,15 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install Dependencies
-        working-directory: princess-web
         run: npm ci
 
       - name: Generate Prisma client
-        working-directory: princess-web
         run: npx prisma generate
 
       - name: Type Check
-        working-directory: princess-web
         run: npx tsc --noEmit
 
       - name: Build
-        working-directory: princess-web
         run: npm run build
 
       
