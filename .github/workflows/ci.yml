@@ -14,6 +14,12 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
       NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      START_TOKEN_SECRET: ${{ secrets.START_TOKEN_SECRET }}
+      PUZZLE_GENERATOR_URL: ${{ secrets.PUZZLE_GENERATOR_URL }}
+      PUZZLE_GENERATOR_API_KEY: ${{ secrets.PUZZLE_GENERATOR_API_KEY }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
