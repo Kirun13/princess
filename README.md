@@ -54,6 +54,14 @@ Required Railway variables:
 
 Optional variables (feature-dependent): OAuth, Upstash Redis, email SMTP, puzzle generator service.
 
+## Logging on Railway
+
+This app logs to stdout with structured JSON using `pino`, which Railway captures automatically.
+
+- Set `LOG_LEVEL` (recommended default: `info`)
+- Keep logs structured for filtering by fields like `route`, `method`, `requestId`, `status`, and `durationMs`
+- Avoid logging secrets, tokens, cookies, raw request bodies, or user PII
+
 ## Regenerating the lockfile for Linux
 
 If native optional dependencies drift toward a Windows-only lockfile, regenerate `package-lock.json` from Linux:

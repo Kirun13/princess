@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  buildRequestContext,
+  logRequestComplete,
+  logRequestError,
+  logRequestStart,
+} from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +30,15 @@ type PuzzleRecord = {
 };
 
 export async function GET(req: NextRequest) {
+  const startedAt = Date.now();
+  const requestContext = buildRequestContext(req, "/api/cron/generate-daily");
+  logRequestStart(requestContext);
+
   // Verify Vercel cron secret
   const authHeader = req.headers.get("authorization");
   const secret = process.env.CRON_SECRET;
   if (!secret || authHeader !== `Bearer ${secret}`) {
+    logRequestComplete(requestContext, 401, startedAt);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -42,6 +53,10 @@ export async function GET(req: NextRequest) {
     select: { id: true, number: true },
   });
   if (existing) {
+    logRequestComplete(requestContext, 200, startedAt, {
+      skipped: true,
+      challengeNumber: existing.number,
+    });
     return NextResponse.json({
       ok: true,
       skipped: true,
@@ -68,7 +83,13 @@ export async function GET(req: NextRequest) {
     if (!res.ok) throw new Error(`Generator service returned ${res.status}`);
     puzzleData = (await res.json()) as PuzzleRecord;
   } catch (err) {
-    console.error("[cron/generate-daily] Microservice failed:", err);
+    logRequestError(
+      requestContext,
+      500,
+      startedAt,
+      "puzzle-generator.request.failed",
+      err
+    );
     return NextResponse.json({ error: "Puzzle generation failed" }, { status: 500 });
   }
   
@@ -100,6 +121,11 @@ export async function GET(req: NextRequest) {
       number: nextNumber,
       puzzleId: puzzle.id,
     },
+  });
+
+  logRequestComplete(requestContext, 200, startedAt, {
+    skipped: false,
+    challengeNumber: daily.number,
   });
 
   return NextResponse.json({

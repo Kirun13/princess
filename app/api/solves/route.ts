@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import {
+  buildRequestContext,
+  logRequestComplete,
+  logRequestStart,
+  logRequestWarn,
+} from "@/lib/logger";
 import { verifyStartToken } from "@/lib/token";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { isSolved } from "@/lib/puzzle/validator";
@@ -17,19 +23,26 @@ const SolveSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const requestStartedAt = Date.now();
+  const requestContext = buildRequestContext(req, "/api/solves");
+  logRequestStart(requestContext);
+
   const session = await auth();
   if (!session?.user?.id) {
+    logRequestWarn(requestContext, 401, requestStartedAt, "solves.unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { limited } = await checkRateLimit(`solves:${session.user.id}`);
   if (limited) {
+    logRequestWarn(requestContext, 429, requestStartedAt, "solves.rate_limited");
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const body = await req.json().catch(() => null);
   const parsed = SolveSchema.safeParse(body);
   if (!parsed.success) {
+    logRequestWarn(requestContext, 400, requestStartedAt, "solves.invalid_payload");
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
@@ -39,12 +52,15 @@ export async function POST(req: NextRequest) {
   // 1. Verify start token
   const tokenPayload = await verifyStartToken(startToken);
   if (!tokenPayload) {
+    logRequestWarn(requestContext, 400, requestStartedAt, "solves.invalid_start_token");
     return NextResponse.json({ error: "Invalid or expired start token" }, { status: 400 });
   }
   if (tokenPayload.userId !== session.user.id) {
+    logRequestWarn(requestContext, 400, requestStartedAt, "solves.token_user_mismatch");
     return NextResponse.json({ error: "Token user mismatch" }, { status: 400 });
   }
   if (tokenPayload.puzzleId !== puzzleId) {
+    logRequestWarn(requestContext, 400, requestStartedAt, "solves.token_puzzle_mismatch");
     return NextResponse.json({ error: "Token puzzle mismatch" }, { status: 400 });
   }
 
@@ -53,21 +69,25 @@ export async function POST(req: NextRequest) {
   const elapsed = Date.now() - startedAt;
   const MIN_MS = 3000;
   if (activeTimeMs < MIN_MS || activeTimeMs > elapsed) {
+    logRequestWarn(requestContext, 400, requestStartedAt, "solves.invalid_active_time");
     return NextResponse.json({ error: "Invalid activeTimeMs" }, { status: 400 });
   }
 
   // 3. Fetch puzzle and validate solution
   const puzzle = await db.puzzle.findUnique({ where: { id: puzzleId } });
   if (!puzzle) {
+    logRequestWarn(requestContext, 404, requestStartedAt, "solves.puzzle_not_found");
     return NextResponse.json({ error: "Puzzle not found" }, { status: 404 });
   }
   if (queenPositions.length !== puzzle.size) {
+    logRequestWarn(requestContext, 400, requestStartedAt, "solves.wrong_queen_count");
     return NextResponse.json({ error: "Wrong number of queens" }, { status: 400 });
   }
 
   const grid = puzzle.grid as Grid;
   const queens = queenPositions as Queens;
   if (!isSolved(grid, queens)) {
+    logRequestWarn(requestContext, 400, requestStartedAt, "solves.invalid_solution");
     return NextResponse.json({ error: "Invalid solution" }, { status: 400 });
   }
 
@@ -80,6 +100,9 @@ export async function POST(req: NextRequest) {
 
   if (existing) {
     // Already solved — return existing result idempotently
+    logRequestComplete(requestContext, 200, requestStartedAt, {
+      existingSolve: true,
+    });
     return NextResponse.json({ timeMs: existing.timeMs, isPersonalBest: existing.isPersonalBest });
   }
 
@@ -94,5 +117,9 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  logRequestComplete(requestContext, 201, requestStartedAt, {
+    existingSolve: false,
+    isPersonalBest,
+  });
   return NextResponse.json({ timeMs: solve.timeMs, isPersonalBest }, { status: 201 });
 }
