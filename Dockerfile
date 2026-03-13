@@ -6,7 +6,10 @@ WORKDIR /app
 FROM base AS deps
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci \
+  && npm install --no-save \
+    "lightningcss-linux-x64-gnu@$(node -p 'require(\"./package-lock.json\").packages[\"node_modules/lightningcss\"].version')" \
+    "@tailwindcss/oxide-linux-x64-gnu@$(node -p 'require(\"./package-lock.json\").packages[\"node_modules/@tailwindcss/oxide\"].version')"
 
 FROM base AS builder
 
