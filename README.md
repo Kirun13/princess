@@ -20,6 +20,54 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Docker
+
+This repo includes a production `Dockerfile` that builds the app on Linux using Next.js standalone output.
+
+Build the image locally with:
+
+```bash
+docker build -t princess-web .
+```
+
+Run it with:
+
+```bash
+docker run --rm -p 3000:3000 princess-web
+```
+
+## Railway (Dockerfile mode)
+
+Use the Dockerfile builder as the single deployment strategy:
+
+- `railway.toml` uses `builder = "DOCKERFILE"`
+- runtime command is `node server.js`
+- healthcheck endpoint is `/api/health`
+
+Required Railway variables:
+
+- `DATABASE_URL`
+- `NEXTAUTH_URL`
+- `NEXTAUTH_SECRET`
+- `START_TOKEN_SECRET`
+- `CRON_SECRET`
+
+Optional variables (feature-dependent): OAuth, Upstash Redis, email SMTP, puzzle generator service.
+
+## Regenerating the lockfile for Linux
+
+If native optional dependencies drift toward a Windows-only lockfile, regenerate `package-lock.json` from Linux:
+
+```bash
+docker run --rm \
+  -v "$PWD:/workspace" \
+  -w /tmp \
+  node:22-bookworm-slim \
+  bash -lc "cp -r /workspace app && cd app && rm -rf node_modules package-lock.json && npm install && cp package-lock.json /workspace/package-lock.json"
+```
+
+This keeps Linux-native optional dependencies such as `lightningcss` and `@tailwindcss/oxide` in sync with CI.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

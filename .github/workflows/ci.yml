@@ -25,8 +25,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
-        with: 
-          node-version: 20
+        with:
+          node-version-file: .node-version
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -41,6 +41,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Docker build smoke check
+        run: docker build -t princess-web-ci .
 
       
 
