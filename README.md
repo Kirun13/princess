@@ -20,6 +20,40 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Testing
+
+This repo now includes unit/integration tests (Vitest + Testing Library) and E2E smoke tests (Playwright).
+
+Run all Vitest tests:
+
+```bash
+npm run test
+```
+
+Run Vitest in watch mode:
+
+```bash
+npm run test:watch
+```
+
+Run coverage:
+
+```bash
+npm run test:coverage
+```
+
+Install Playwright browser binaries (first time only):
+
+```bash
+npm run test:e2e:install
+```
+
+Run E2E tests:
+
+```bash
+npm run test:e2e
+```
+
 ## Docker
 
 This repo includes a production `Dockerfile` that builds the app on Linux using Next.js standalone output.
