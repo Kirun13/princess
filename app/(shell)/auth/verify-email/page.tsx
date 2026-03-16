@@ -10,14 +10,13 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token") ?? "";
+  const missingToken = token.length === 0;
   const [state, setState] = useState<State>("loading");
   const [errorMsg, setErrorMsg] = useState("");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!token) {
-      setState("error");
-      setErrorMsg("Missing verification token.");
       return;
     }
 
@@ -40,10 +39,15 @@ function VerifyEmailContent() {
       } else if (result.success) {
         setState("resent");
       } else {
+        setState("error");
         setErrorMsg(result.error ?? "Could not send verification email.");
       }
     });
   }
+
+  const showMissingTokenError = missingToken && state === "loading";
+  const currentState: State = showMissingTokenError ? "error" : state;
+  const currentErrorMsg = showMissingTokenError ? "Missing verification token." : errorMsg;
 
   return (
     <div
@@ -62,7 +66,7 @@ function VerifyEmailContent() {
           <div className="w-full h-1" style={{ background: "var(--gradient-brand)" }} />
 
           <div className="p-8 text-center">
-            {state === "loading" && (
+            {currentState === "loading" && (
               <>
                 <div
                   className="w-12 h-12 rounded-[8px] flex items-center justify-center text-white text-xl font-bold mx-auto mb-5"
@@ -79,7 +83,7 @@ function VerifyEmailContent() {
               </>
             )}
 
-            {state === "success" && (
+            {currentState === "success" && (
               <>
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-5"
@@ -102,7 +106,7 @@ function VerifyEmailContent() {
               </>
             )}
 
-            {(state === "error") && (
+            {currentState === "error" && (
               <>
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-5"
@@ -120,9 +124,7 @@ function VerifyEmailContent() {
                 >
                   Verification failed
                 </h1>
-                <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-                  {errorMsg}
-                </p>
+                  <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>{currentErrorMsg}</p>
                 <div className="flex flex-col gap-3">
                   <button
                     onClick={handleResend}
@@ -147,7 +149,7 @@ function VerifyEmailContent() {
               </>
             )}
 
-            {state === "resent" && (
+            {currentState === "resent" && (
               <>
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-5"
@@ -178,7 +180,7 @@ function VerifyEmailContent() {
               </>
             )}
 
-            {state === "resend-rate-limited" && (
+            {currentState === "resend-rate-limited" && (
               <>
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-5"
