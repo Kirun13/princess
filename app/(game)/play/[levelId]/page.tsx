@@ -13,8 +13,12 @@ export default async function LevelPlayPage({ params }: PageProps) {
   const { levelId } = await params;
   const session = await auth();
 
-  const level = await db.level.findUnique({
-    where: { id: levelId },
+  const level = await db.level.findFirst({
+    where: {
+      id: levelId,
+      status: "PUBLISHED",
+      deletedAt: null,
+    },
     include: {
       puzzle: {
         select: { id: true, size: true, difficulty: true, grid: true, avgRating: true, ratingCount: true },
@@ -30,8 +34,15 @@ export default async function LevelPlayPage({ params }: PageProps) {
       : Promise.resolve(null),
 
     db.level.findFirst({
-      where: { number: { gt: level.number } },
-      orderBy: { number: "asc" },
+      where: {
+        status: "PUBLISHED",
+        deletedAt: null,
+        OR: [
+          { sortOrder: { gt: level.sortOrder } },
+          { sortOrder: level.sortOrder, number: { gt: level.number } },
+        ],
+      },
+      orderBy: [{ sortOrder: "asc" }, { number: "asc" }],
       select: { id: true },
     }),
 

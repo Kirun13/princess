@@ -10,7 +10,8 @@ export const authConfig = {
       const isLoggedIn = !!auth?.user;
       const isProtected =
         nextUrl.pathname.startsWith("/profile") ||
-        nextUrl.pathname.startsWith("/settings");
+        nextUrl.pathname.startsWith("/settings") ||
+        nextUrl.pathname.startsWith("/admin");
       if (isProtected && !isLoggedIn) return false;
       return true;
     },

@@ -21,8 +21,19 @@ async function main() {
 
     await db.level.upsert({
       where: { number: levelNumber },
-      update: { name: `Level ${levelNumber}`, puzzleId: puzzle.id },
-      create: { number: levelNumber, name: `Level ${levelNumber}`, puzzleId: puzzle.id },
+      update: {
+        name: `Level ${levelNumber}`,
+        puzzleId: puzzle.id,
+        sortOrder: levelNumber,
+        status: "PUBLISHED",
+      },
+      create: {
+        number: levelNumber,
+        name: `Level ${levelNumber}`,
+        puzzleId: puzzle.id,
+        sortOrder: levelNumber,
+        status: "PUBLISHED",
+      },
     });
 
     console.log(`  ✓ Level ${levelNumber} (${size}×${size} ${difficulty})`);

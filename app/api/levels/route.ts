@@ -6,7 +6,11 @@ export async function GET() {
   const session = await auth();
 
   const levels = await db.level.findMany({
-    orderBy: { number: "asc" },
+    where: {
+      status: "PUBLISHED",
+      deletedAt: null,
+    },
+    orderBy: [{ sortOrder: "asc" }, { number: "asc" }],
     include: {
       puzzle: { select: { id: true, size: true, difficulty: true } },
     },

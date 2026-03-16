@@ -6,6 +6,16 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum LevelStatus {
+  DRAFT
+  PUBLISHED
+}
+
 model User {
   id            String        @id @default(cuid())
   username      String        @unique
@@ -14,12 +24,14 @@ model User {
   image         String?
   passwordHash  String?
   createdAt     DateTime      @default(now())
+  role          UserRole      @default(USER)
   accounts      Account[]
   sessions      Session[]
   solves        Solve[]
   achievements  Achievement[]
   ratings       LevelRating[]
   settings      UserSettings?
+  createdLevels Level[]       @relation("LevelCreatedBy")
 }
 
 model Puzzle {
@@ -36,13 +48,21 @@ model Puzzle {
 }
 
 model Level {
-  id       String        @id @default(cuid())
-  number   Int           @unique
-  name     String
-  puzzleId String        @unique
-  puzzle   Puzzle        @relation(fields: [puzzleId], references: [id])
-  solves   Solve[]
-  ratings  LevelRating[]
+  id          String        @id @default(cuid())
+  number      Int           @unique
+  name        String
+  puzzleId     String        @unique
+  sortOrder   Int
+  status      LevelStatus    @default(PUBLISHED)
+  deletedAt   DateTime?
+  createdById String?
+  puzzle      Puzzle         @relation(fields: [puzzleId], references: [id])
+  createdBy   User?          @relation("LevelCreatedBy", fields: [createdById], references: [id])
+  solves      Solve[]
+  ratings     LevelRating[]
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([createdById])
 }
 
 model DailyChallenge {

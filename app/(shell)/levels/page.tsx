@@ -13,7 +13,11 @@ export default async function LevelsPage() {
 
   try {
     const dbLevels = await db.level.findMany({
-      orderBy: { number: "asc" },
+      where: {
+        status: "PUBLISHED",
+        deletedAt: null,
+      },
+      orderBy: [{ sortOrder: "asc" }, { number: "asc" }],
       include: { puzzle: { select: { size: true, difficulty: true, avgRating: true, ratingCount: true } } },
     });
 

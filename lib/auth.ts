@@ -8,12 +8,26 @@ import type { DefaultSession } from "next-auth";
 import { db } from "@/lib/db";
 import { authConfig } from "@/auth.config";
 
+type AppRole = "USER" | "ADMIN";
+
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
       username: string;
+      role: AppRole;
     } & DefaultSession["user"];
+  }
+
+  interface User {
+    role?: AppRole;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    role?: AppRole;
+    username?: string;
   }
 }
 
@@ -57,6 +71,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.username,
           email: user.email,
           image: user.image,
+          role: user.role,
         };
       },
     }),
@@ -65,12 +80,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Runs on sign-in and token refresh. `user` is only present on initial sign-in.
     // We store the DB username in token.name (an existing JWT field).
     async jwt({ token, user }) {
-      if (user?.id) {
+      const userId = user?.id ?? token.sub;
+      if (userId) {
         const dbUser = await db.user.findUnique({
-          where: { id: user.id! },
-          select: { username: true },
+          where: { id: userId },
+          select: { username: true, role: true },
         });
         token.name = dbUser?.username ?? token.name ?? "";
+        token.username = dbUser?.username ?? token.username ?? "";
+        token.role = dbUser?.role ?? token.role ?? "USER";
       }
       return token;
     },
@@ -78,7 +96,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
-        session.user.username = token.name ?? "";
+        session.user.username = token.username ?? token.name ?? "";
+        session.user.role = token.role ?? "USER";
       }
       return session;
     },

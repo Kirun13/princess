@@ -10,8 +10,8 @@ export async function GET(
   const { id } = await params;
   const session = await auth();
 
-  const level = await db.level.findUnique({
-    where: { id },
+  const level = await db.level.findFirst({
+    where: { id, status: "PUBLISHED", deletedAt: null },
     include: {
       puzzle: { select: { id: true, size: true, difficulty: true, grid: true } },
     },
