@@ -230,15 +230,7 @@ export function LevelCompleteModal({
     },
   });
   const backHref = dailyChallengeId ? "/daily" : "/levels";
-  const showSolveSummary =
-    mutation.isPending ||
-    mutation.isError ||
-    (mutation.isSuccess &&
-      (
-        mutation.data.isPersonalBest ||
-        mutation.data.rank != null ||
-        mutation.data.unlockedAchievements.length > 0
-      ));
+  const showSolveSummary = mutation.isPending || mutation.isError || mutation.isSuccess;
 
   useEffect(() => {
     if (!isSolved) {
@@ -286,310 +278,334 @@ export function LevelCompleteModal({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="w-full max-w-sm overflow-hidden rounded-[20px]"
+            className="w-full max-w-3xl overflow-hidden rounded-[20px]"
             style={{
+              maxHeight: "calc(100vh - 2rem)",
               background: "var(--surface-01)",
               border: "1px solid var(--border-default)",
               boxShadow: "var(--glow-xl)",
             }}
           >
-            {/* Top accent bar — brand-success gradient */}
-            <div
-              className="w-full h-1"
-              style={{ background: "var(--gradient-brand-success)" }}
-            />
-
-            <div className="p-8">
-              <Dialog.Title
-                className="text-2xl font-black text-center mb-1"
-                style={{
-                  fontFamily: "var(--font-mono), monospace",
-                  color: "var(--text-primary)",
-                }}
-              >
-                Puzzle Solved!
-              </Dialog.Title>
-              <p
-                className="text-sm text-center mb-6 font-mono"
-                style={{ color: "var(--brand-light)", fontFamily: "var(--font-mono), monospace" }}
-              >
-                {formatTimeMs(activeMs)}
-              </p>
-              {/* Time stats bar */}
+            <div className="max-h-[calc(100vh-2rem)] overflow-y-auto">
+              {/* Top accent bar — brand-success gradient */}
               <div
-                className="rounded-[12px] p-4 mb-6 flex items-center justify-between"
-                style={{
-                  background: "var(--surface-02)",
-                  border: "1px solid var(--border-subtle)",
-                }}
-              >
-                <span
-                  className="text-xs uppercase tracking-[2px]"
-                  style={{ fontFamily: "var(--font-mono), monospace", color: "var(--text-muted)" }}
-                >
-                  Your Time
-                </span>
-                <span
-                  className="text-lg font-bold"
-                  style={{ fontFamily: "var(--font-mono), monospace", color: "var(--text-primary)" }}
-                >
-                  {formatTimeMs(activeMs)}
-                </span>
-              </div>
+                className="w-full h-1"
+                style={{ background: "var(--gradient-brand-success)" }}
+              />
 
-              {/* Solve result area */}
-              {isAuthenticated && showSolveSummary && (
-                <div className="mb-4 flex items-center justify-center">
-                  {mutation.isPending && (
-                    <div className="flex gap-2 items-center">
-                      <div
-                        className="h-4 w-4 rounded-full border-2 border-t-transparent animate-spin"
-                        style={{ borderColor: "var(--brand)" }}
-                      />
-                      <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-                        Saving your time…
-                      </span>
+              <div className="p-6 sm:p-8">
+                <Dialog.Title
+                  className="text-2xl font-black text-center"
+                  style={{
+                    fontFamily: "var(--font-mono), monospace",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Puzzle Solved!
+                </Dialog.Title>
+
+                <div
+                  data-testid="level-complete-layout"
+                  className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start"
+                >
+                  <div data-testid="level-complete-summary" className="min-w-0 space-y-4">
+                    <div
+                      className="rounded-[12px] p-4 sm:p-5"
+                      style={{
+                        background: "var(--surface-02)",
+                        border: "1px solid var(--border-subtle)",
+                      }}
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <span
+                          className="text-xs uppercase tracking-[2px]"
+                          style={{ fontFamily: "var(--font-mono), monospace", color: "var(--text-muted)" }}
+                        >
+                          Your Time
+                        </span>
+                        <span
+                          className="text-2xl font-bold leading-none"
+                          style={{ fontFamily: "var(--font-mono), monospace", color: "var(--text-primary)" }}
+                        >
+                          {formatTimeMs(activeMs)}
+                        </span>
+                      </div>
                     </div>
-                  )}
 
-                  {mutation.isSuccess && (
-                    <div className="w-full">
-                      <div className="text-center mb-4">
-                      {mutation.data.isPersonalBest && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ delay: 0.5, type: "spring", stiffness: 300, damping: 20 }}
-                          className="inline-block px-4 py-1.5 rounded-full text-xs font-bold mb-2"
-                          style={{
-                            background: "var(--gradient-brand-success)",
-                            color: "white",
-                            fontFamily: "var(--font-mono), monospace",
-                          }}
-                        >
-                          🏆 Personal Best!
-                        </motion.div>
-                      )}
-                      {mutation.data.rank != null && (
-                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                          You rank{" "}
-                          <span
-                            className="font-bold"
-                            style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}
+                    {isAuthenticated && showSolveSummary && (
+                      <div className="space-y-4">
+                        {mutation.isPending && (
+                          <div className="flex gap-2 items-center justify-center lg:justify-start rounded-[12px] p-4"
+                            style={{
+                              background: "var(--surface-02)",
+                              border: "1px solid var(--border-subtle)",
+                            }}
                           >
-                            #{mutation.data.rank}
-                          </span>{" "}
-                          on this board
-                        </p>
-                      )}
-                      </div>
+                            <div
+                              className="h-4 w-4 rounded-full border-2 border-t-transparent animate-spin"
+                              style={{ borderColor: "var(--brand)" }}
+                            />
+                            <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+                              Saving your time…
+                            </span>
+                          </div>
+                        )}
 
-                      <div
-                        className="grid grid-cols-2 gap-2 mb-4"
-                        style={{ fontFamily: "var(--font-mono), monospace" }}
-                      >
-                        <SolveStat
-                          label="Field"
-                          value={mutation.data.totalSolvers > 0 ? `${mutation.data.totalSolvers} runs` : "—"}
-                        />
-                        <SolveStat
-                          label="Top Time"
-                          value={mutation.data.topTimeMs ? formatTimeMs(mutation.data.topTimeMs) : "—"}
-                        />
-                        <SolveStat
-                          label="Average"
-                          value={mutation.data.averageTimeMs ? formatTimeMs(mutation.data.averageTimeMs) : "—"}
-                        />
-                        <SolveStat
-                          label="Your Edge"
-                          value={comparison?.deltaLabel ?? "First run"}
-                        />
-                      </div>
+                        {mutation.isSuccess && (
+                          <div className="space-y-4">
+                            <div className="text-center lg:text-left">
+                              {mutation.data.isPersonalBest && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  transition={{ delay: 0.5, type: "spring", stiffness: 300, damping: 20 }}
+                                  className="inline-block px-4 py-1.5 rounded-full text-xs font-bold mb-2"
+                                  style={{
+                                    background: "var(--gradient-brand-success)",
+                                    color: "white",
+                                    fontFamily: "var(--font-mono), monospace",
+                                  }}
+                                >
+                                  🏆 Personal Best!
+                                </motion.div>
+                              )}
+                              {mutation.data.rank != null && (
+                                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                                  You rank{" "}
+                                  <span
+                                    className="font-bold"
+                                    style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}
+                                  >
+                                    #{mutation.data.rank}
+                                  </span>{" "}
+                                  on this board
+                                </p>
+                              )}
+                            </div>
 
-                      {comparison?.summary && (
-                        <p className="text-sm text-center mb-4" style={{ color: "var(--text-muted)" }}>
-                          {comparison.summary}
-                        </p>
-                      )}
+                            <div
+                              className="grid grid-cols-2 gap-3"
+                              style={{ fontFamily: "var(--font-mono), monospace" }}
+                            >
+                              <SolveStat
+                                label="Field"
+                                value={mutation.data.totalSolvers > 0 ? `${mutation.data.totalSolvers} runs` : "—"}
+                              />
+                              <SolveStat
+                                label="Top Time"
+                                value={mutation.data.topTimeMs ? formatTimeMs(mutation.data.topTimeMs) : "—"}
+                              />
+                              <SolveStat
+                                label="Average"
+                                value={mutation.data.averageTimeMs ? formatTimeMs(mutation.data.averageTimeMs) : "—"}
+                              />
+                              <SolveStat
+                                label="Your Edge"
+                                value={comparison?.deltaLabel ?? "First run"}
+                              />
+                            </div>
 
-                      {mutation.data.unlockedAchievements.length > 0 && (
-                        <div
-                          className="rounded-[12px] p-4 mb-4"
-                          style={{
-                            background: "rgba(124, 58, 237, 0.08)",
-                            border: "1px solid rgba(124, 58, 237, 0.22)",
-                          }}
-                        >
-                          <p
-                            className="text-xs uppercase tracking-[2px] mb-3 text-center"
-                            style={{ color: "var(--brand-light)", fontFamily: "var(--font-mono), monospace" }}
-                          >
-                            Unlocked Achievements
-                          </p>
-                          <div className="space-y-2">
-                            {mutation.data.unlockedAchievements.map((achievement) => (
+                            {comparison?.summary && (
+                              <p className="text-sm text-center lg:text-left" style={{ color: "var(--text-muted)" }}>
+                                {comparison.summary}
+                              </p>
+                            )}
+
+                            {mutation.data.unlockedAchievements.length > 0 && (
                               <div
-                                key={achievement.type}
-                                className="rounded-[10px] px-3 py-2"
+                                className="rounded-[12px] p-4"
                                 style={{
-                                  background: "var(--surface-02)",
-                                  border: "1px solid var(--border-subtle)",
+                                  background: "rgba(124, 58, 237, 0.08)",
+                                  border: "1px solid rgba(124, 58, 237, 0.22)",
                                 }}
                               >
                                 <p
-                                  className="text-sm font-semibold"
-                                  style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}
+                                  className="text-xs uppercase tracking-[2px] mb-3 text-center lg:text-left"
+                                  style={{ color: "var(--brand-light)", fontFamily: "var(--font-mono), monospace" }}
                                 >
-                                  {achievement.title}
+                                  Unlocked Achievements
                                 </p>
-                                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                                  {achievement.description}
-                                </p>
+                                <div className="space-y-2">
+                                  {mutation.data.unlockedAchievements.map((achievement) => (
+                                    <div
+                                      key={achievement.type}
+                                      className="rounded-[10px] px-3 py-2"
+                                      style={{
+                                        background: "var(--surface-02)",
+                                        border: "1px solid var(--border-subtle)",
+                                      }}
+                                    >
+                                      <p
+                                        className="text-sm font-semibold"
+                                        style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}
+                                      >
+                                        {achievement.title}
+                                      </p>
+                                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                                        {achievement.description}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            ))}
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        )}
 
-                  {mutation.isError && (
-                    <div className="text-center">
-                      <p className="text-xs mb-2" style={{ color: "var(--color-error)" }}>
-                        {mutation.error.message}
-                      </p>
+                        {mutation.isError && (
+                          <div
+                            className="rounded-[12px] p-4 text-center lg:text-left"
+                            style={{
+                              background: "var(--surface-02)",
+                              border: "1px solid var(--border-subtle)",
+                            }}
+                          >
+                            <p className="text-xs mb-2" style={{ color: "var(--color-error)" }}>
+                              {mutation.error.message}
+                            </p>
+                            <button
+                              onClick={() => {
+                                if (payloadRef.current) {
+                                  mutation.mutate(payloadRef.current);
+                                }
+                              }}
+                              className="text-xs font-medium"
+                              style={{ color: "var(--brand-light)", fontFamily: "var(--font-mono), monospace" }}
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div data-testid="level-complete-actions" className="min-w-0 space-y-4">
+                    {!isAuthenticated && (
+                      <div
+                        className="rounded-[12px] p-4 text-center"
+                        style={{
+                          background: "var(--surface-02)",
+                          border: "1px solid var(--border-subtle)",
+                        }}
+                      >
+                        <p className="text-sm mb-2" style={{ color: "var(--text-muted)" }}>
+                          Sign in to save your time and see rankings.
+                        </p>
+                        <a
+                          href="/auth/sign-in"
+                          className="text-sm font-medium"
+                          style={{ color: "var(--brand-light)", fontFamily: "var(--font-mono), monospace" }}
+                        >
+                          Sign in →
+                        </a>
+                      </div>
+                    )}
+
+                    {/* User rating — shown once solve is saved (or immediately for guests) */}
+                    {(mutation.isSuccess || !isAuthenticated) && (
+                      <div
+                        className="rounded-[12px] p-4"
+                        style={{
+                          background: "var(--surface-02)",
+                          border: "1px solid var(--border-subtle)",
+                        }}
+                      >
+                        <UserRatingWidget
+                          levelId={levelId}
+                          dailyChallengeId={dailyChallengeId}
+                          initialRating={userRating}
+                          avgRating={avgRating}
+                          ratingCount={ratingCount}
+                          isAuthenticated={isAuthenticated}
+                        />
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex flex-col gap-3">
+                      {mutation.isSuccess && (
+                        <button
+                          onClick={() => router.push(`/share/${mutation.data.solveId}`)}
+                          className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
+                          style={{
+                            fontFamily: "var(--font-mono), monospace",
+                            border: "1px solid rgba(124, 58, 237, 0.25)",
+                            background: "rgba(124, 58, 237, 0.08)",
+                            color: "var(--brand-light)",
+                          }}
+                        >
+                          Share Result ↗
+                        </button>
+                      )}
+                      {nextLevelId ? (
+                        <button
+                          onClick={() => router.push(`/play/${nextLevelId}`)}
+                          className="w-full py-3 rounded-[8px] text-sm font-bold text-white transition-all duration-150"
+                          style={{
+                            fontFamily: "var(--font-mono), monospace",
+                            background: "var(--gradient-brand)",
+                            boxShadow: "var(--glow-lg)",
+                          }}
+                        >
+                          Next Level →
+                        </button>
+                      ) : dailyChallengeId ? (
+                        <button
+                          onClick={() => router.push("/daily/leaderboard")}
+                          className="w-full py-3 rounded-[8px] text-sm font-bold text-white transition-all duration-150"
+                          style={{
+                            fontFamily: "var(--font-mono), monospace",
+                            background: "var(--gradient-brand)",
+                            boxShadow: "var(--glow-lg)",
+                          }}
+                        >
+                          View Daily Leaderboard
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => router.push(backHref)}
+                          className="w-full py-3 rounded-[8px] text-sm font-bold text-white transition-all duration-150"
+                          style={{
+                            fontFamily: "var(--font-mono), monospace",
+                            background: "var(--gradient-brand)",
+                            boxShadow: "var(--glow-lg)",
+                          }}
+                        >
+                          Back to Levels
+                        </button>
+                      )}
+                      <button
+                        onClick={() => router.push(backHref)}
+                        className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
+                        style={{
+                          fontFamily: "var(--font-mono), monospace",
+                          border: "1px solid var(--border-default)",
+                          background: "transparent",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        ← Go Back
+                      </button>
                       <button
                         onClick={() => {
-                          if (payloadRef.current) {
-                            mutation.mutate(payloadRef.current);
-                          }
+                          mutation.reset();
+                          submittedRef.current = false;
+                          reset();
                         }}
-                        className="text-xs font-medium"
-                        style={{ color: "var(--brand-light)", fontFamily: "var(--font-mono), monospace" }}
+                        className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
+                        style={{
+                          fontFamily: "var(--font-mono), monospace",
+                          border: "1px solid var(--border-default)",
+                          background: "transparent",
+                          color: "var(--text-primary)",
+                        }}
                       >
-                        Retry
+                        ↺ Play Again
                       </button>
                     </div>
-                  )}
+                  </div>
                 </div>
-              )}
-
-              {!isAuthenticated && (
-                <div className="mb-6 text-center">
-                  <p className="text-sm mb-2" style={{ color: "var(--text-muted)" }}>
-                    Sign in to save your time and see rankings.
-                  </p>
-                  <a
-                    href="/auth/sign-in"
-                    className="text-sm font-medium"
-                    style={{ color: "var(--brand-light)", fontFamily: "var(--font-mono), monospace" }}
-                  >
-                    Sign in →
-                  </a>
-                </div>
-              )}
-
-              {/* User rating — shown once solve is saved (or immediately for guests) */}
-              {(mutation.isSuccess || !isAuthenticated) && (
-                <div
-                  className="rounded-[12px] p-4 mb-6"
-                  style={{
-                    background: "var(--surface-02)",
-                    border: "1px solid var(--border-subtle)",
-                  }}
-                >
-                  <UserRatingWidget
-                    levelId={levelId}
-                    dailyChallengeId={dailyChallengeId}
-                    initialRating={userRating}
-                    avgRating={avgRating}
-                    ratingCount={ratingCount}
-                    isAuthenticated={isAuthenticated}
-                  />
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex flex-col gap-3">
-                {mutation.isSuccess && (
-                  <button
-                    onClick={() => router.push(`/share/${mutation.data.solveId}`)}
-                    className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
-                    style={{
-                      fontFamily: "var(--font-mono), monospace",
-                      border: "1px solid rgba(124, 58, 237, 0.25)",
-                      background: "rgba(124, 58, 237, 0.08)",
-                      color: "var(--brand-light)",
-                    }}
-                  >
-                    Share Result ↗
-                  </button>
-                )}
-                {nextLevelId ? (
-                  <button
-                    onClick={() => router.push(`/play/${nextLevelId}`)}
-                    className="w-full py-3 rounded-[8px] text-sm font-bold text-white transition-all duration-150"
-                    style={{
-                      fontFamily: "var(--font-mono), monospace",
-                      background: "var(--gradient-brand)",
-                      boxShadow: "var(--glow-lg)",
-                    }}
-                  >
-                    Next Level →
-                  </button>
-                ) : dailyChallengeId ? (
-                  <button
-                    onClick={() => router.push("/daily/leaderboard")}
-                    className="w-full py-3 rounded-[8px] text-sm font-bold text-white transition-all duration-150"
-                    style={{
-                      fontFamily: "var(--font-mono), monospace",
-                      background: "var(--gradient-brand)",
-                      boxShadow: "var(--glow-lg)",
-                    }}
-                  >
-                    View Daily Leaderboard
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => router.push(backHref)}
-                    className="w-full py-3 rounded-[8px] text-sm font-bold text-white transition-all duration-150"
-                    style={{
-                      fontFamily: "var(--font-mono), monospace",
-                      background: "var(--gradient-brand)",
-                      boxShadow: "var(--glow-lg)",
-                    }}
-                  >
-                    Back to Levels
-                  </button>
-                )}
-                <button
-                  onClick={() => router.push(backHref)}
-                  className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
-                  style={{
-                    fontFamily: "var(--font-mono), monospace",
-                    border: "1px solid var(--border-default)",
-                    background: "transparent",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  ← Go Back
-                </button>
-                <button
-                  onClick={() => {
-                    mutation.reset();
-                    submittedRef.current = false;
-                    reset();
-                  }}
-                  className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
-                  style={{
-                    fontFamily: "var(--font-mono), monospace",
-                    border: "1px solid var(--border-default)",
-                    background: "transparent",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  ↺ Play Again
-                </button>
               </div>
             </div>
           </motion.div>
@@ -602,13 +618,16 @@ export function LevelCompleteModal({
 function SolveStat({ label, value }: { label: string; value: string }) {
   return (
     <div
-      className="rounded-[10px] px-3 py-2"
+      className="h-full rounded-[10px] px-3 py-3"
       style={{ background: "var(--surface-02)", border: "1px solid var(--border-subtle)" }}
     >
-      <p className="text-[10px] uppercase tracking-[2px]" style={{ color: "var(--text-muted)" }}>
+      <p className="text-[10px] uppercase tracking-[2px] mb-1" style={{ color: "var(--text-muted)" }}>
         {label}
       </p>
-      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+      <p
+        className="text-sm font-semibold leading-6"
+        style={{ color: "var(--text-primary)", overflowWrap: "anywhere" }}
+      >
         {value}
       </p>
     </div>
