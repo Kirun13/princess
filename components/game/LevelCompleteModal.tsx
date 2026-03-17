@@ -193,7 +193,6 @@ export function LevelCompleteModal({
 
   const submittedRef = useRef(false);
   const payloadRef = useRef<SolvePayload | null>(null);
-  const backHref = dailyChallengeId ? "/daily" : "/levels";
 
   const mutation = useMutation<SolveResult, Error, SolvePayload>({
     mutationFn: async (payload) => {
@@ -223,6 +222,12 @@ export function LevelCompleteModal({
       }
     },
   });
+  const backHref = dailyChallengeId ? "/daily" : "/levels";
+  const showSolveSummary =
+    mutation.isPending ||
+    mutation.isError ||
+    (mutation.isSuccess &&
+      (mutation.data.isPersonalBest || mutation.data.rank != null));
 
   useEffect(() => {
     if (!isSolved) {
@@ -315,8 +320,8 @@ export function LevelCompleteModal({
               </div>
 
               {/* Solve result area */}
-              {isAuthenticated && (
-                <div className="mb-6 min-h-[3rem] flex items-center justify-center">
+              {isAuthenticated && showSolveSummary && (
+                <div className="mb-4 flex items-center justify-center">
                   {mutation.isPending && (
                     <div className="flex gap-2 items-center">
                       <div
