@@ -15,7 +15,7 @@ export function Footer() {
             How to Play
           </a>
           <a
-            href="https://github.com"
+            href="https://github.com/Kirun13/princess"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors flex items-center gap-1.5"

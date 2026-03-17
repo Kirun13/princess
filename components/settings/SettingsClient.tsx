@@ -7,15 +7,14 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import {
+  getUIFontCssVar,
+  normalizeUIFont,
+  type AppTheme,
+  type ResolvedUserSettings,
+} from "@/lib/user-settings";
 
-interface Settings {
-  soundEffects: boolean;
-  confirmReset: boolean;
-  highlightConflicts: boolean;
-  showTimer: boolean;
-  theme: "dark" | "light" | "auto";
-  uiFont: string;
-}
+type Settings = ResolvedUserSettings;
 
 interface Props {
   initialSettings: Settings;
@@ -208,13 +207,17 @@ export default function SettingsClient({
     saveSettings({ [key]: value });
     // Apply theme immediately without a page reload
     if (key === "theme") {
-      const t = value as "dark" | "light" | "auto";
+      const t = value as AppTheme;
       if (t === "auto") {
         const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
       } else {
         document.documentElement.setAttribute("data-theme", t);
       }
+    }
+    if (key === "uiFont") {
+      const nextFont = getUIFontCssVar(normalizeUIFont(String(value)));
+      document.documentElement.style.setProperty("--app-ui-font", nextFont);
     }
   }
 
@@ -333,7 +336,7 @@ export default function SettingsClient({
             label="Theme"
             description="Choose your preferred color scheme"
             value={settings.theme}
-            onValueChange={(v) => updateSetting("theme", v as "dark" | "light" | "auto")}
+            onValueChange={(v) => updateSetting("theme", v as AppTheme)}
             options={[
               { value: "dark", label: "Dark" },
               { value: "light", label: "Light" },
@@ -344,7 +347,7 @@ export default function SettingsClient({
             label="UI Font"
             description="Choose the interface font family"
             value={settings.uiFont}
-            onValueChange={(v) => updateSetting("uiFont", v)}
+            onValueChange={(v) => updateSetting("uiFont", normalizeUIFont(v))}
             options={[
               { value: "JetBrains Mono", label: "JetBrains Mono" },
               { value: "Inter", label: "Inter" },

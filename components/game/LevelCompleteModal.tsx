@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useGameStore } from "@/lib/store/gameStore";
+import type { AchievementSummary } from "@/lib/achievements";
 
 function formatTimeMs(ms: number): string {
   const m = Math.floor(ms / 60000);
@@ -24,9 +25,15 @@ interface SolvePayload {
 }
 
 interface SolveResult {
+  solveId: string;
   timeMs: number;
   isPersonalBest: boolean;
   rank?: number | null;
+  totalSolvers: number;
+  averageTimeMs: number | null;
+  topTimeMs: number | null;
+  beatAverage: boolean | null;
+  unlockedAchievements: AchievementSummary[];
 }
 
 interface LevelCompleteModalProps {
@@ -227,7 +234,11 @@ export function LevelCompleteModal({
     mutation.isPending ||
     mutation.isError ||
     (mutation.isSuccess &&
-      (mutation.data.isPersonalBest || mutation.data.rank != null));
+      (
+        mutation.data.isPersonalBest ||
+        mutation.data.rank != null ||
+        mutation.data.unlockedAchievements.length > 0
+      ));
 
   useEffect(() => {
     if (!isSolved) {
@@ -253,6 +264,13 @@ export function LevelCompleteModal({
   }, [isSolved]);
 
   const activeMs = getActiveMs();
+  const comparison = mutation.data
+    ? getComparisonCopy({
+        currentTimeMs: activeMs,
+        averageTimeMs: mutation.data.averageTimeMs,
+        topTimeMs: mutation.data.topTimeMs,
+      })
+    : null;
 
   return (
     <Dialog.Root open={isSolved}>
@@ -335,7 +353,8 @@ export function LevelCompleteModal({
                   )}
 
                   {mutation.isSuccess && (
-                    <div className="text-center">
+                    <div className="w-full">
+                      <div className="text-center mb-4">
                       {mutation.data.isPersonalBest && (
                         <motion.div
                           initial={{ scale: 0 }}
@@ -360,8 +379,76 @@ export function LevelCompleteModal({
                           >
                             #{mutation.data.rank}
                           </span>{" "}
-                          on this level
+                          on this board
                         </p>
+                      )}
+                      </div>
+
+                      <div
+                        className="grid grid-cols-2 gap-2 mb-4"
+                        style={{ fontFamily: "var(--font-mono), monospace" }}
+                      >
+                        <SolveStat
+                          label="Field"
+                          value={mutation.data.totalSolvers > 0 ? `${mutation.data.totalSolvers} runs` : "—"}
+                        />
+                        <SolveStat
+                          label="Top Time"
+                          value={mutation.data.topTimeMs ? formatTimeMs(mutation.data.topTimeMs) : "—"}
+                        />
+                        <SolveStat
+                          label="Average"
+                          value={mutation.data.averageTimeMs ? formatTimeMs(mutation.data.averageTimeMs) : "—"}
+                        />
+                        <SolveStat
+                          label="Your Edge"
+                          value={comparison?.deltaLabel ?? "First run"}
+                        />
+                      </div>
+
+                      {comparison?.summary && (
+                        <p className="text-sm text-center mb-4" style={{ color: "var(--text-muted)" }}>
+                          {comparison.summary}
+                        </p>
+                      )}
+
+                      {mutation.data.unlockedAchievements.length > 0 && (
+                        <div
+                          className="rounded-[12px] p-4 mb-4"
+                          style={{
+                            background: "rgba(124, 58, 237, 0.08)",
+                            border: "1px solid rgba(124, 58, 237, 0.22)",
+                          }}
+                        >
+                          <p
+                            className="text-xs uppercase tracking-[2px] mb-3 text-center"
+                            style={{ color: "var(--brand-light)", fontFamily: "var(--font-mono), monospace" }}
+                          >
+                            Unlocked Achievements
+                          </p>
+                          <div className="space-y-2">
+                            {mutation.data.unlockedAchievements.map((achievement) => (
+                              <div
+                                key={achievement.type}
+                                className="rounded-[10px] px-3 py-2"
+                                style={{
+                                  background: "var(--surface-02)",
+                                  border: "1px solid var(--border-subtle)",
+                                }}
+                              >
+                                <p
+                                  className="text-sm font-semibold"
+                                  style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}
+                                >
+                                  {achievement.title}
+                                </p>
+                                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                                  {achievement.description}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
@@ -424,6 +511,20 @@ export function LevelCompleteModal({
 
               {/* Action buttons */}
               <div className="flex flex-col gap-3">
+                {mutation.isSuccess && (
+                  <button
+                    onClick={() => router.push(`/share/${mutation.data.solveId}`)}
+                    className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
+                    style={{
+                      fontFamily: "var(--font-mono), monospace",
+                      border: "1px solid rgba(124, 58, 237, 0.25)",
+                      background: "rgba(124, 58, 237, 0.08)",
+                      color: "var(--brand-light)",
+                    }}
+                  >
+                    Share Result ↗
+                  </button>
+                )}
                 {nextLevelId ? (
                   <button
                     onClick={() => router.push(`/play/${nextLevelId}`)}
@@ -438,7 +539,7 @@ export function LevelCompleteModal({
                   </button>
                 ) : dailyChallengeId ? (
                   <button
-                    onClick={() => router.push("/leaderboard")}
+                    onClick={() => router.push("/daily/leaderboard")}
                     className="w-full py-3 rounded-[8px] text-sm font-bold text-white transition-all duration-150"
                     style={{
                       fontFamily: "var(--font-mono), monospace",
@@ -496,4 +597,53 @@ export function LevelCompleteModal({
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+function SolveStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      className="rounded-[10px] px-3 py-2"
+      style={{ background: "var(--surface-02)", border: "1px solid var(--border-subtle)" }}
+    >
+      <p className="text-[10px] uppercase tracking-[2px]" style={{ color: "var(--text-muted)" }}>
+        {label}
+      </p>
+      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function getComparisonCopy(input: {
+  currentTimeMs: number;
+  averageTimeMs: number | null;
+  topTimeMs: number | null;
+}) {
+  if (!input.averageTimeMs) {
+    return {
+      deltaLabel: "First run",
+      summary: null,
+    };
+  }
+
+  const averageDelta = Math.abs(input.currentTimeMs - input.averageTimeMs);
+  const againstAverage =
+    input.currentTimeMs <= input.averageTimeMs
+      ? `${formatTimeMs(averageDelta)} faster`
+      : `${formatTimeMs(averageDelta)} off average`;
+
+  let summary =
+    input.currentTimeMs <= input.averageTimeMs
+      ? "You finished ahead of the current average pace."
+      : "You finished behind the current average pace. One more run could move you up fast.";
+
+  if (input.topTimeMs && input.currentTimeMs === input.topTimeMs) {
+    summary = "That is the current best time on this board.";
+  }
+
+  return {
+    deltaLabel: againstAverage,
+    summary,
+  };
 }

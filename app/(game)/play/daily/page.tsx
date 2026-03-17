@@ -2,7 +2,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { signStartToken } from "@/lib/token";
 import { GameClient } from "@/components/game/GameClient";
-import type { Grid } from "@/lib/puzzle/validator";
+import type { Grid, Queens } from "@/lib/puzzle/validator";
+import { resolveUserSettings } from "@/lib/user-settings";
 
 export default async function DailyPlayPage() {
   const session = await auth();
@@ -15,7 +16,15 @@ export default async function DailyPlayPage() {
     orderBy: { date: "desc" },
     include: {
       puzzle: {
-        select: { id: true, size: true, difficulty: true, grid: true, avgRating: true, ratingCount: true },
+        select: {
+          id: true,
+          size: true,
+          difficulty: true,
+          grid: true,
+          solution: true,
+          avgRating: true,
+          ratingCount: true,
+        },
       },
     },
   });
@@ -48,7 +57,12 @@ export default async function DailyPlayPage() {
     session?.user?.id
       ? db.userSettings.findUnique({
           where: { userId: session.user.id },
-          select: { confirmReset: true },
+          select: {
+            confirmReset: true,
+            highlightConflicts: true,
+            showTimer: true,
+            soundEffects: true,
+          },
         })
       : Promise.resolve(null),
 
@@ -65,6 +79,8 @@ export default async function DailyPlayPage() {
       : Promise.resolve(null),
   ]);
 
+  const preferences = resolveUserSettings(settings);
+
   return (
     <GameClient
       grid={challenge.puzzle.grid as Grid}
@@ -72,11 +88,12 @@ export default async function DailyPlayPage() {
       startToken={startToken}
       dailyChallengeId={challenge.id}
       size={challenge.puzzle.size}
-      confirmReset={settings?.confirmReset ?? false}
+      preferences={preferences}
       isAuthenticated={!!session?.user?.id}
       userRating={existingRating?.rating ?? null}
       avgRating={challenge.puzzle.avgRating}
       ratingCount={challenge.puzzle.ratingCount}
+      solution={challenge.puzzle.solution as Queens}
     />
   );
 }

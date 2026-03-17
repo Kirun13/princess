@@ -136,6 +136,9 @@ export default async function DailyPage() {
                 <p className="text-sm text-[var(--text-muted)] mt-1">
                   {formatDate(challenge.date)}
                 </p>
+                <p className="text-xs text-[var(--text-muted)] mt-2">
+                  Daily boards reset at 00:00 UTC.
+                </p>
                 {challenge.puzzle.ratingCount > 0 && (
                   <p
                     className="text-sm mt-2"
@@ -184,6 +187,30 @@ export default async function DailyPage() {
                       </p>
                     </div>
                   )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href="/daily/leaderboard"
+                    className="inline-flex px-4 py-2 rounded-[8px] text-sm font-semibold"
+                    style={{
+                      background: "var(--gradient-brand)",
+                      color: "white",
+                      fontFamily: "var(--font-mono), monospace",
+                    }}
+                  >
+                    View Leaderboard
+                  </Link>
+                  <Link
+                    href="/play/daily"
+                    className="inline-flex px-4 py-2 rounded-[8px] text-sm font-semibold"
+                    style={{
+                      border: "1px solid var(--border-default)",
+                      color: "var(--text-primary)",
+                      fontFamily: "var(--font-mono), monospace",
+                    }}
+                  >
+                    Replay Board
+                  </Link>
                 </div>
               </div>
             ) : (

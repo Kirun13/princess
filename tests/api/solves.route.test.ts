@@ -6,17 +6,23 @@ const {
   checkRateLimitMock,
   verifyStartTokenMock,
   isSolvedMock,
+  syncAchievementsForSolveMock,
   puzzleFindUniqueMock,
   solveFindUniqueMock,
   solveCreateMock,
+  solveAggregateMock,
+  solveCountMock,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
   checkRateLimitMock: vi.fn(),
   verifyStartTokenMock: vi.fn(),
   isSolvedMock: vi.fn(),
+  syncAchievementsForSolveMock: vi.fn(),
   puzzleFindUniqueMock: vi.fn(),
   solveFindUniqueMock: vi.fn(),
   solveCreateMock: vi.fn(),
+  solveAggregateMock: vi.fn(),
+  solveCountMock: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -35,6 +41,10 @@ vi.mock("@/lib/puzzle/validator", () => ({
   isSolved: isSolvedMock,
 }));
 
+vi.mock("@/lib/achievements", () => ({
+  syncAchievementsForSolve: syncAchievementsForSolveMock,
+}));
+
 vi.mock("@/lib/db", () => ({
   db: {
     puzzle: {
@@ -43,6 +53,8 @@ vi.mock("@/lib/db", () => ({
     solve: {
       findUnique: solveFindUniqueMock,
       create: solveCreateMock,
+      aggregate: solveAggregateMock,
+      count: solveCountMock,
     },
   },
 }));
@@ -79,9 +91,12 @@ describe("POST /api/solves", () => {
     checkRateLimitMock.mockReset();
     verifyStartTokenMock.mockReset();
     isSolvedMock.mockReset();
+    syncAchievementsForSolveMock.mockReset();
     puzzleFindUniqueMock.mockReset();
     solveFindUniqueMock.mockReset();
     solveCreateMock.mockReset();
+    solveAggregateMock.mockReset();
+    solveCountMock.mockReset();
   });
 
   it("returns 401 when user is not authenticated", async () => {
@@ -124,17 +139,32 @@ describe("POST /api/solves", () => {
     isSolvedMock.mockReturnValue(true);
     solveFindUniqueMock.mockResolvedValue(null);
     solveCreateMock.mockResolvedValue({
+      id: "solve-1",
       timeMs: 5_000,
       isPersonalBest: false,
     });
+    solveAggregateMock.mockResolvedValue({
+      _avg: { timeMs: 5_000 },
+      _min: { timeMs: 5_000 },
+      _count: { _all: 1 },
+    });
+    solveCountMock.mockResolvedValue(0);
+    syncAchievementsForSolveMock.mockResolvedValue([]);
 
     const response = await POST(makeRequest(validPayload));
 
     expect(response.status).toBe(201);
     expect(solveCreateMock).toHaveBeenCalled();
     expect(await response.json()).toEqual({
+      solveId: "solve-1",
       timeMs: 5_000,
       isPersonalBest: false,
+      rank: 1,
+      totalSolvers: 1,
+      averageTimeMs: 5_000,
+      topTimeMs: 5_000,
+      beatAverage: true,
+      unlockedAchievements: [],
     });
   });
 
@@ -157,17 +187,31 @@ describe("POST /api/solves", () => {
     });
     isSolvedMock.mockReturnValue(true);
     solveFindUniqueMock.mockResolvedValue({
+      id: "solve-existing",
       timeMs: 4_321,
       isPersonalBest: true,
     });
+    solveAggregateMock.mockResolvedValue({
+      _avg: { timeMs: 4_321 },
+      _min: { timeMs: 4_321 },
+      _count: { _all: 1 },
+    });
+    solveCountMock.mockResolvedValue(0);
 
     const response = await POST(makeRequest(validPayload));
 
     expect(response.status).toBe(200);
     expect(solveCreateMock).not.toHaveBeenCalled();
     expect(await response.json()).toEqual({
+      solveId: "solve-existing",
       timeMs: 4_321,
       isPersonalBest: true,
+      rank: 1,
+      totalSolvers: 1,
+      averageTimeMs: 4_321,
+      topTimeMs: 4_321,
+      beatAverage: true,
+      unlockedAchievements: [],
     });
   });
 });

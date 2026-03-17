@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { db } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "Princess — Queens Puzzle",
@@ -34,7 +35,24 @@ const HOW_TO_STEPS = [
   { n: "03", label: "Solve the Board", desc: "One queen per row, column, and region. No touching." },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  let levelCount = 12;
+  let challengeCount = 0;
+  let solveCount = 0;
+
+  try {
+    const [publishedLevels, dailyChallenges, solves] = await Promise.all([
+      db.level.count({ where: { status: "PUBLISHED", deletedAt: null } }),
+      db.dailyChallenge.count(),
+      db.solve.count(),
+    ]);
+    levelCount = publishedLevels;
+    challengeCount = dailyChallenges;
+    solveCount = solves;
+  } catch {
+    // Render sensible defaults when the database is not available locally.
+  }
+
   return (
     <div className="flex flex-col bg-[var(--bg-void)]">
       {/* ── Hero ── */}
@@ -115,9 +133,9 @@ export default function HomePage() {
       <section style={{ borderTop: "1px solid var(--border-subtle)", borderBottom: "1px solid var(--border-subtle)" }}>
         <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-around gap-6 text-center">
           {[
-            { value: "12+", label: "Levels" },
-            { value: "∞", label: "Daily Challenges" },
-            { value: "🔥", label: "Streak Tracking" },
+            { value: `${levelCount}+`, label: "Levels" },
+            { value: challengeCount > 0 ? `${challengeCount}` : "∞", label: "Daily Archive" },
+            { value: solveCount > 0 ? `${solveCount}+` : "Live", label: "Recorded Solves" },
           ].map(({ value, label }) => (
             <div key={label}>
               <div

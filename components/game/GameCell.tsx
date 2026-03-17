@@ -39,6 +39,7 @@ type GameCellProps = {
   isConflict: boolean;
   isSolved: boolean;
   cellPx: number | null;
+  isHinted?: boolean;
   onClick: (e: React.MouseEvent) => void;
   onMouseDown: (e: React.MouseEvent) => void;
   onMouseEnter: () => void;
@@ -55,6 +56,7 @@ export default function GameCell({
   isConflict,
   isSolved,
   cellPx,
+  isHinted = false,
   onClick,
   onMouseDown,
   onMouseEnter,
@@ -74,7 +76,9 @@ export default function GameCell({
   const boxShadow =
     hasQueen && !isConflict
       ? `0 0 14px ${color}60, inset 0 0 0 1px ${color}`
-      : undefined;
+      : isHinted
+        ? `0 0 0 2px rgba(245, 158, 11, 0.85), inset 0 0 0 1px rgba(245, 158, 11, 0.4)`
+        : undefined;
 
   return (
     <motion.div
@@ -104,6 +108,7 @@ export default function GameCell({
         "rounded-[6px] cursor-pointer select-none",
         "transition-all duration-150",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
+        isHinted ? "ring-2 ring-amber-400/80 ring-offset-1 ring-offset-transparent" : "",
         isSolved ? "cursor-default" : !isConflict ? "hover:brightness-110" : "",
       ].join(" ")}
       style={{
@@ -138,7 +143,7 @@ export default function GameCell({
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 500, damping: 25 }}
             className="text-base sm:text-lg md:text-2xl leading-none pointer-events-none font-bold"
-            style={{ color: color + "99" }}
+            style={{ color: isHinted ? "#FCD34D" : color + "99" }}
           >
             ×
           </motion.span>

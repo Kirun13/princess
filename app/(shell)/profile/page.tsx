@@ -4,44 +4,11 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { formatTimeMs, formatDate } from "@/lib/format";
 import EmailVerificationBanner from "@/components/auth/EmailVerificationBanner";
+import { computeDailyStreak, getAchievementSummary } from "@/lib/achievements";
 
 export const metadata = {
   title: "Profile — Princess Puzzle",
 };
-
-function computeDailyStreak(dates: Date[]): number {
-  if (dates.length === 0) return 0;
-
-  const uniqueDays = [
-    ...new Set(
-      dates.map((d) => {
-        const u = new Date(d);
-        return `${u.getUTCFullYear()}-${u.getUTCMonth()}-${u.getUTCDate()}`;
-      })
-    ),
-  ].sort((a, b) => (a < b ? 1 : -1)); // descending
-
-  const now = new Date();
-  const todayKey = `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}`;
-  const yesterday = new Date(now.getTime() - 86_400_000);
-  const yesterdayKey = `${yesterday.getUTCFullYear()}-${yesterday.getUTCMonth()}-${yesterday.getUTCDate()}`;
-
-  if (uniqueDays[0] !== todayKey && uniqueDays[0] !== yesterdayKey) return 0;
-
-  let streak = 1;
-  for (let i = 1; i < uniqueDays.length; i++) {
-    const [y1, m1, d1] = uniqueDays[i - 1].split("-").map(Number);
-    const [y2, m2, d2] = uniqueDays[i].split("-").map(Number);
-    const prev = Date.UTC(y1, m1, d1);
-    const curr = Date.UTC(y2, m2, d2);
-    if (Math.round((prev - curr) / 86_400_000) === 1) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -49,7 +16,7 @@ export default async function ProfilePage() {
 
   const userId = session.user.id;
 
-  const [user, totalLevels, levelsCompleted, bestSolve, dailySolves, credentialsAccount] =
+  const [user, totalLevels, levelsCompleted, bestSolve, dailySolves, credentialsAccount, achievements, achievementCount] =
     await Promise.all([
       db.user.findUnique({
         where: { id: userId },
@@ -82,6 +49,12 @@ export default async function ProfilePage() {
         where: { userId, provider: "credentials" },
         select: { id: true },
       }),
+      db.achievement.findMany({
+        where: { userId },
+        orderBy: { unlockedAt: "desc" },
+        take: 6,
+      }),
+      db.achievement.count({ where: { userId } }),
     ]);
 
   if (!user) redirect("/auth/sign-in");
@@ -89,6 +62,16 @@ export default async function ProfilePage() {
   const totalSolves = user.solves.length > 0 ? (await db.solve.count({ where: { userId } })) : 0;
   const streak = computeDailyStreak(dailySolves.map((s) => s.completedAt));
   const isUnverified = !!credentialsAccount && !user.emailVerified;
+  const achievementSummaries = achievements
+    .map((achievement) => {
+      const summary = getAchievementSummary(achievement.type);
+      if (!summary) return null;
+      return {
+        ...summary,
+        unlockedAt: achievement.unlockedAt,
+      };
+    })
+    .filter((achievement): achievement is NonNullable<typeof achievement> => achievement !== null);
 
   return (
     <>
@@ -143,6 +126,10 @@ export default async function ProfilePage() {
               label: "Daily Streak",
               value: streak > 0 ? `${streak} day${streak !== 1 ? "s" : ""}` : "—",
             },
+            {
+              label: "Achievements",
+              value: achievementCount > 0 ? achievementCount : "—",
+            },
           ].map(({ label, value }) => (
             <div
               key={label}
@@ -157,6 +144,47 @@ export default async function ProfilePage() {
               </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xs text-[var(--text-muted)] uppercase tracking-widest">
+            Achievements
+          </h2>
+          {achievementCount > 0 && (
+            <span className="text-xs text-[var(--text-muted)]">
+              {achievementCount} unlocked
+            </span>
+          )}
+        </div>
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+          {achievementSummaries.length === 0 ? (
+            <div className="p-6 text-center">
+              <p className="text-[var(--text-muted)] text-sm">
+                Your next solve can unlock your first crown.
+              </p>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-px bg-[var(--border)]">
+              {achievementSummaries.map((achievement) => (
+                <div key={achievement.type} className="bg-[var(--bg-card)] p-5">
+                  <p
+                    className="text-sm font-semibold mb-1"
+                    style={{ fontFamily: "var(--font-mono), monospace", color: "var(--text-primary)" }}
+                  >
+                    {achievement.title}
+                  </p>
+                  <p className="text-sm text-[var(--text-muted)] mb-3">
+                    {achievement.description}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Unlocked {formatDate(achievement.unlockedAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

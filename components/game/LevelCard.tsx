@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatTime } from "@/lib/format";
+import { getLevelDescriptor } from "@/lib/level-meta";
 
 export type LevelWithSolve = {
   id: string;
@@ -31,6 +32,7 @@ export default function LevelCard({ level }: Props) {
     bg: "#7C3AED20",
     border: "#7C3AED50",
   };
+  const descriptor = getLevelDescriptor(level);
 
   return (
     <Link
@@ -107,7 +109,22 @@ export default function LevelCard({ level }: Props) {
             ★ {level.avgRating.toFixed(1)} ({level.ratingCount})
           </span>
         )}
+        <span
+          className="text-xs px-2 py-1 rounded-full"
+          style={{
+            fontFamily: "var(--app-ui-font), Inter, system-ui, sans-serif",
+            color: "var(--text-muted)",
+            background: "var(--surface-02)",
+            border: "1px solid var(--border-subtle)",
+          }}
+        >
+          {descriptor.label}
+        </span>
       </div>
+
+      <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+        {descriptor.description}
+      </p>
 
       {/* Best time or prompt */}
       {level.solve ? (

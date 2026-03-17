@@ -3,7 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { signStartToken } from "@/lib/token";
 import { GameClient } from "@/components/game/GameClient";
-import type { Grid } from "@/lib/puzzle/validator";
+import type { Grid, Queens } from "@/lib/puzzle/validator";
+import { resolveUserSettings } from "@/lib/user-settings";
 
 interface PageProps {
   params: Promise<{ levelId: string }>;
@@ -21,7 +22,15 @@ export default async function LevelPlayPage({ params }: PageProps) {
     },
     include: {
       puzzle: {
-        select: { id: true, size: true, difficulty: true, grid: true, avgRating: true, ratingCount: true },
+        select: {
+          id: true,
+          size: true,
+          difficulty: true,
+          grid: true,
+          solution: true,
+          avgRating: true,
+          ratingCount: true,
+        },
       },
     },
   });
@@ -49,7 +58,12 @@ export default async function LevelPlayPage({ params }: PageProps) {
     session?.user?.id
       ? db.userSettings.findUnique({
           where: { userId: session.user.id },
-          select: { confirmReset: true },
+          select: {
+            confirmReset: true,
+            highlightConflicts: true,
+            showTimer: true,
+            soundEffects: true,
+          },
         })
       : Promise.resolve(null),
 
@@ -61,6 +75,8 @@ export default async function LevelPlayPage({ params }: PageProps) {
       : Promise.resolve(null),
   ]);
 
+  const preferences = resolveUserSettings(settings);
+
   return (
     <GameClient
       grid={level.puzzle.grid as Grid}
@@ -69,11 +85,12 @@ export default async function LevelPlayPage({ params }: PageProps) {
       levelId={level.id}
       nextLevelId={nextLevel?.id ?? null}
       size={level.puzzle.size}
-      confirmReset={settings?.confirmReset ?? false}
+      preferences={preferences}
       isAuthenticated={!!session?.user?.id}
       userRating={existingRating?.rating ?? null}
       avgRating={level.puzzle.avgRating}
       ratingCount={level.puzzle.ratingCount}
+      solution={level.puzzle.solution as Queens}
     />
   );
 }

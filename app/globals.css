@@ -59,6 +59,7 @@
 
   --background: var(--bg-void);
   --foreground: var(--text-primary);
+  --app-ui-font: var(--font-inter);
 }
 
 [data-theme="light"] {
@@ -109,7 +110,11 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-inter), Inter, system-ui, sans-serif;
+  font-family: var(--app-ui-font), Inter, system-ui, sans-serif;
+}
+
+.font-ui {
+  font-family: var(--app-ui-font), Inter, system-ui, sans-serif;
 }
 
 /* ── Utility: ambient purple glow overlay ── */

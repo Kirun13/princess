@@ -17,10 +17,11 @@ export function ThemeProvider({ theme, children }: ThemeProviderProps) {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       const apply = (dark: boolean) =>
         html.setAttribute("data-theme", dark ? "dark" : "light");
+      const handleChange = (event: MediaQueryListEvent) => apply(event.matches);
 
       apply(mq.matches);
-      mq.addEventListener("change", (e) => apply(e.matches));
-      return () => mq.removeEventListener("change", (e) => apply(e.matches));
+      mq.addEventListener("change", handleChange);
+      return () => mq.removeEventListener("change", handleChange);
     } else {
       html.setAttribute("data-theme", theme);
     }

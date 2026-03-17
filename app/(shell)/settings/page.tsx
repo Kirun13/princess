@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import SettingsClient from "@/components/settings/SettingsClient";
 import EmailVerificationBanner from "@/components/auth/EmailVerificationBanner";
 import type { Metadata } from "next";
+import { normalizeUIFont, resolveUserSettings } from "@/lib/user-settings";
 
 export const metadata: Metadata = { title: "Settings — Princess" };
 
@@ -27,6 +28,17 @@ export default async function SettingsPage() {
 
   const isCredentialsUser = !!credentialsAccount;
   const isUnverified = isCredentialsUser && !user?.emailVerified;
+  const resolvedSettings = resolveUserSettings({
+    soundEffects: settings?.soundEffects,
+    confirmReset: settings?.confirmReset,
+    highlightConflicts: settings?.highlightConflicts,
+    showTimer: settings?.showTimer,
+    theme:
+      settings?.theme === "light" || settings?.theme === "auto"
+        ? settings.theme
+        : "dark",
+    uiFont: normalizeUIFont(settings?.uiFont),
+  });
 
   return (
     <>
@@ -34,14 +46,7 @@ export default async function SettingsPage() {
         <EmailVerificationBanner email={user.email} />
       )}
       <SettingsClient
-        initialSettings={{
-          soundEffects: settings?.soundEffects ?? true,
-          confirmReset: settings?.confirmReset ?? false,
-          highlightConflicts: settings?.highlightConflicts ?? true,
-          showTimer: settings?.showTimer ?? true,
-          theme: (settings?.theme as "dark" | "light" | "auto") ?? "dark",
-          uiFont: settings?.uiFont ?? "JetBrains Mono",
-        }}
+        initialSettings={resolvedSettings}
         username={user?.username ?? ""}
         email={user?.email ?? ""}
         isCredentialsUser={isCredentialsUser}

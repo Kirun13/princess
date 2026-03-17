@@ -17,6 +17,8 @@ type GameBoardProps = {
   grid: Grid;
   puzzleId: string;
   startToken: string | null;
+  highlightConflicts: boolean;
+  hintCell?: [number, number] | null;
 };
 
 /** Determine toggle result for a cell: empty→mark, mark→empty, queen→empty */
@@ -30,7 +32,13 @@ function toggleResult(
   return hasQueen || marks.has(`${r},${c}`) ? "empty" : "mark";
 }
 
-export default function GameBoard({ grid, puzzleId, startToken }: GameBoardProps) {
+export default function GameBoard({
+  grid,
+  puzzleId,
+  startToken,
+  highlightConflicts,
+  hintCell,
+}: GameBoardProps) {
   const loadPuzzle = useGameStore((s) => s.loadPuzzle);
   const queens = useGameStore((s) => s.queens);
   const marks = useGameStore((s) => s.marks);
@@ -332,9 +340,10 @@ export default function GameBoard({ grid, puzzleId, startToken }: GameBoardProps
               regionId={regionId}
               hasQueen={queenSet.has(key)}
               hasMark={marks.has(key)}
-              isConflict={conflicts.has(key)}
+              isConflict={highlightConflicts && conflicts.has(key)}
               isSolved={isSolved}
               cellPx={cellPx}
+              isHinted={hintCell?.[0] === r && hintCell?.[1] === c}
               onClick={(e) => handleClick(r, c)}
               onMouseDown={(e) => handleCellMouseDown(r, c, e)}
               onMouseEnter={() => handleCellMouseEnter(r, c)}

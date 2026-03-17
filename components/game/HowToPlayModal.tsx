@@ -20,12 +20,19 @@ const CONTROLS: [string, string][] = [
   ["Double-click", "Place queen (♛)"],
   ["Drag", "Paint / erase marks"],
   ["Right-click", "Remove queen or mark"],
+  ["Hint", "Highlight one correct queen location"],
   ["Space", "Toggle mark on focused cell"],
   ["Space + ↑↓←→", "Paint marks while navigating"],
   ["Enter", "Place queen on focused cell"],
   ["R", "Reset board"],
   ["P", "Pause / resume"],
   ["Esc", "Back to levels"],
+];
+
+const STRATEGY_TIPS = [
+  "Rows with only a couple of safe cells are the fastest place to start.",
+  "A queen blocks its row, column, region, and every touching square around it.",
+  "If a region can only accept one cell after your marks, you have a forced move.",
 ];
 
 export function HowToPlayModal({ open, onClose }: HowToPlayModalProps) {
@@ -125,6 +132,22 @@ export function HowToPlayModal({ open, onClose }: HowToPlayModalProps) {
                           >
                             {desc}
                           </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="h-px mb-4" style={{ background: "var(--border-subtle)" }} />
+
+                    <p
+                      className="text-[10px] uppercase tracking-[3px] mb-2"
+                      style={{ fontFamily: "var(--font-mono), monospace", color: "var(--text-muted)" }}
+                    >
+                      Strategy
+                    </p>
+                    <ul className="space-y-2 mb-5">
+                      {STRATEGY_TIPS.map((tip) => (
+                        <li key={tip} className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                          {tip}
                         </li>
                       ))}
                     </ul>

@@ -12,6 +12,7 @@ import { verifyStartToken } from "@/lib/token";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { isSolved } from "@/lib/puzzle/validator";
 import type { Grid, Queens } from "@/lib/puzzle/validator";
+import { syncAchievementsForSolve, type AchievementSummary } from "@/lib/achievements";
 
 const SolveSchema = z.object({
   puzzleId: z.string().cuid(),
@@ -99,11 +100,22 @@ export async function POST(req: NextRequest) {
     : null;
 
   if (existing) {
+    const summary = await buildSolveSummary({
+      solveId: existing.id,
+      timeMs: existing.timeMs,
+      levelId,
+      dailyChallengeId,
+    });
     // Already solved — return existing result idempotently
     logRequestComplete(requestContext, 200, requestStartedAt, {
       existingSolve: true,
     });
-    return NextResponse.json({ timeMs: existing.timeMs, isPersonalBest: existing.isPersonalBest });
+    return NextResponse.json({
+      ...summary,
+      timeMs: existing.timeMs,
+      isPersonalBest: existing.isPersonalBest,
+      unlockedAchievements: [] satisfies AchievementSummary[],
+    });
   }
 
   const isPersonalBest = !!dailyChallengeId; // Only meaningful for daily challenges
@@ -116,10 +128,80 @@ export async function POST(req: NextRequest) {
       isPersonalBest,
     },
   });
+  const [summary, unlockedAchievements] = await Promise.all([
+    buildSolveSummary({
+      solveId: solve.id,
+      timeMs: solve.timeMs,
+      levelId,
+      dailyChallengeId,
+    }),
+    syncAchievementsForSolve({
+      userId: session.user.id,
+      timeMs: solve.timeMs,
+    }),
+  ]);
 
   logRequestComplete(requestContext, 201, requestStartedAt, {
     existingSolve: false,
     isPersonalBest,
   });
-  return NextResponse.json({ timeMs: solve.timeMs, isPersonalBest }, { status: 201 });
+  return NextResponse.json(
+    {
+      ...summary,
+      timeMs: solve.timeMs,
+      isPersonalBest,
+      unlockedAchievements,
+    },
+    { status: 201 }
+  );
+}
+
+async function buildSolveSummary(input: {
+  solveId: string;
+  timeMs: number;
+  levelId?: string;
+  dailyChallengeId?: string;
+}) {
+  const solveWhere = input.levelId
+    ? { levelId: input.levelId }
+    : input.dailyChallengeId
+      ? { dailyChallengeId: input.dailyChallengeId }
+      : null;
+
+  if (!solveWhere) {
+    return {
+      solveId: input.solveId,
+      rank: null,
+      totalSolvers: 0,
+      averageTimeMs: null,
+      topTimeMs: null,
+      beatAverage: null,
+    };
+  }
+
+  const [aggregate, betterSolves] = await Promise.all([
+    db.solve.aggregate({
+      where: solveWhere,
+      _avg: { timeMs: true },
+      _min: { timeMs: true },
+      _count: { _all: true },
+    }),
+    db.solve.count({
+      where: {
+        ...solveWhere,
+        timeMs: { lt: input.timeMs },
+      },
+    }),
+  ]);
+
+  const averageTimeMs = aggregate._avg.timeMs ? Math.round(aggregate._avg.timeMs) : null;
+
+  return {
+    solveId: input.solveId,
+    rank: betterSolves + 1,
+    totalSolvers: aggregate._count._all,
+    averageTimeMs,
+    topTimeMs: aggregate._min.timeMs ?? null,
+    beatAverage: averageTimeMs === null ? null : input.timeMs <= averageTimeMs,
+  };
 }

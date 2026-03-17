@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 
-// Middleware only uses the edge-safe config — no Prisma, no bcrypt, no crypto.
+// Proxy only uses the edge-safe config — no Prisma, no bcrypt, no crypto.
 export default NextAuth(authConfig).auth;
 
 export const config = {
