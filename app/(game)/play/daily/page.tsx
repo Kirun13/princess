@@ -72,7 +72,6 @@ export default async function DailyPlayPage() {
       startToken={startToken}
       dailyChallengeId={challenge.id}
       size={challenge.puzzle.size}
-      difficulty={challenge.puzzle.difficulty}
       confirmReset={settings?.confirmReset ?? false}
       isAuthenticated={!!session?.user?.id}
       userRating={existingRating?.rating ?? null}

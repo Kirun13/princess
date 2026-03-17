@@ -7,20 +7,6 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useGameStore } from "@/lib/store/gameStore";
 
-const PAR_MS: Record<string, number> = {
-  easy: 60_000,
-  medium: 120_000,
-  hard: 240_000,
-  expert: 480_000,
-};
-
-function getStars(difficulty: string, activeMs: number): 1 | 2 | 3 {
-  const par = PAR_MS[difficulty] ?? 120_000;
-  if (activeMs <= par / 2) return 3;
-  if (activeMs <= par) return 2;
-  return 1;
-}
-
 function formatTimeMs(ms: number): string {
   const m = Math.floor(ms / 60000);
   const s = Math.floor((ms % 60000) / 1000);
@@ -48,41 +34,10 @@ interface LevelCompleteModalProps {
   levelId?: string;
   dailyChallengeId?: string;
   nextLevelId?: string | null;
-  difficulty: string;
   isAuthenticated: boolean;
   userRating: number | null;
   avgRating: number;
   ratingCount: number;
-}
-
-function StarRating({ stars }: { stars: 1 | 2 | 3 }) {
-  return (
-    <div className="flex gap-2 justify-center">
-      {([1, 2, 3] as const).map((star) => (
-        <motion.span
-          key={star}
-          initial={{ scale: 0, rotate: -30 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{
-            delay: star * 0.15,
-            type: "spring",
-            stiffness: 400,
-            damping: 15,
-          }}
-          className="text-5xl leading-none"
-          style={{
-            color: star <= stars ? "#F59E0B" : "#2A2A3A",
-            filter:
-              star <= stars
-                ? "drop-shadow(0 0 8px rgba(245,158,11,0.6))"
-                : "none",
-          }}
-        >
-          ★
-        </motion.span>
-      ))}
-    </div>
-  );
 }
 
 interface UserRatingWidgetProps {
@@ -136,7 +91,7 @@ function UserRatingWidget({
   if (!isAuthenticated) {
     return (
       <div className="text-center">
-        <p className="text-xs mb-1" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace" }}>
+        <p className="text-xs mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}>
           Rate difficulty
         </p>
         <a
@@ -147,7 +102,7 @@ function UserRatingWidget({
           Sign in to rate →
         </a>
         {ratingCount > 0 && (
-          <p className="text-xs mt-2" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace" }}>
+          <p className="text-xs mt-2" style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}>
             ★ {avgRating.toFixed(1)} · {ratingCount} {ratingCount === 1 ? "rating" : "ratings"}
           </p>
         )}
@@ -159,13 +114,13 @@ function UserRatingWidget({
     <div className="text-center">
       <p
         className="text-xs mb-0.5 uppercase tracking-[1px]"
-        style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace" }}
+        style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}
       >
         Rate difficulty
       </p>
       <p
         className="text-xs mb-2"
-        style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace", opacity: 0.6 }}
+        style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}
       >
         1 = Easy · 5 = Expert
       </p>
@@ -211,7 +166,7 @@ function UserRatingWidget({
         </p>
       )}
       {ratingCount > 0 && (
-        <p className="text-xs mt-2" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono), monospace", opacity: 0.7 }}>
+        <p className="text-xs mt-2" style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono), monospace" }}>
           ★ {avgRating.toFixed(1)} · {ratingCount} {ratingCount === 1 ? "rating" : "ratings"}
         </p>
       )}
@@ -224,7 +179,6 @@ export function LevelCompleteModal({
   levelId,
   dailyChallengeId,
   nextLevelId,
-  difficulty,
   isAuthenticated,
   userRating,
   avgRating,
@@ -239,6 +193,7 @@ export function LevelCompleteModal({
 
   const submittedRef = useRef(false);
   const payloadRef = useRef<SolvePayload | null>(null);
+  const backHref = dailyChallengeId ? "/daily" : "/levels";
 
   const mutation = useMutation<SolveResult, Error, SolvePayload>({
     mutationFn: async (payload) => {
@@ -293,7 +248,6 @@ export function LevelCompleteModal({
   }, [isSolved]);
 
   const activeMs = getActiveMs();
-  const stars = isSolved ? getStars(difficulty, activeMs) : 1;
 
   return (
     <Dialog.Root open={isSolved}>
@@ -338,11 +292,6 @@ export function LevelCompleteModal({
               >
                 {formatTimeMs(activeMs)}
               </p>
-
-              <div className="mb-6">
-                <StarRating stars={stars} />
-              </div>
-
               {/* Time stats bar */}
               <div
                 className="rounded-[12px] p-4 mb-6 flex items-center justify-between"
@@ -496,7 +445,7 @@ export function LevelCompleteModal({
                   </button>
                 ) : (
                   <button
-                    onClick={() => router.push("/levels")}
+                    onClick={() => router.push(backHref)}
                     className="w-full py-3 rounded-[8px] text-sm font-bold text-white transition-all duration-150"
                     style={{
                       fontFamily: "var(--font-mono), monospace",
@@ -508,6 +457,18 @@ export function LevelCompleteModal({
                   </button>
                 )}
                 <button
+                  onClick={() => router.push(backHref)}
+                  className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
+                  style={{
+                    fontFamily: "var(--font-mono), monospace",
+                    border: "1px solid var(--border-default)",
+                    background: "transparent",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  ← Go Back
+                </button>
+                <button
                   onClick={() => {
                     mutation.reset();
                     submittedRef.current = false;
@@ -518,7 +479,7 @@ export function LevelCompleteModal({
                     fontFamily: "var(--font-mono), monospace",
                     border: "1px solid var(--border-default)",
                     background: "transparent",
-                    color: "var(--text-muted)",
+                    color: "var(--text-primary)",
                   }}
                 >
                   ↺ Play Again

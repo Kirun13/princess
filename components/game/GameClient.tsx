@@ -17,7 +17,6 @@ interface GameClientProps {
   dailyChallengeId?: string;
   nextLevelId?: string | null;
   size: number;
-  difficulty: string;
   confirmReset?: boolean;
   isAuthenticated: boolean;
   userRating?: number | null;
@@ -33,7 +32,6 @@ export function GameClient({
   dailyChallengeId,
   nextLevelId,
   size,
-  difficulty,
   confirmReset,
   isAuthenticated,
   userRating,
@@ -61,7 +59,14 @@ export function GameClient({
           break;
         case "p":
         case "P":
-          if (!isHowToPlayOpen) { e.preventDefault(); isPaused ? resume() : pause(); }
+          if (!isHowToPlayOpen) {
+            e.preventDefault();
+            if (isPaused) {
+              resume();
+            } else {
+              pause();
+            }
+          }
           break;
         case "Escape":
           e.preventDefault();
@@ -101,7 +106,6 @@ export function GameClient({
         levelId={levelId}
         dailyChallengeId={dailyChallengeId}
         nextLevelId={nextLevelId}
-        difficulty={difficulty}
         isAuthenticated={isAuthenticated}
         userRating={userRating ?? null}
         avgRating={avgRating}

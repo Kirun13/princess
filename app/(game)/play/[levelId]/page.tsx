@@ -69,7 +69,6 @@ export default async function LevelPlayPage({ params }: PageProps) {
       levelId={level.id}
       nextLevelId={nextLevel?.id ?? null}
       size={level.puzzle.size}
-      difficulty={level.puzzle.difficulty}
       confirmReset={settings?.confirmReset ?? false}
       isAuthenticated={!!session?.user?.id}
       userRating={existingRating?.rating ?? null}
