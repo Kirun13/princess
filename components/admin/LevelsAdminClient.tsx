@@ -414,18 +414,6 @@ export function LevelsAdminClient() {
                               {saving ? "Saving..." : "Save"}
                             </button>
                             <button
-                              onClick={() =>
-                                updateDraft(level.id, {
-                                  status: (draft?.status ?? level.status) === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
-                                })
-                              }
-                              disabled={!!level.deletedAt}
-                              className="rounded-[8px] border px-3 py-1.5 text-xs font-bold uppercase tracking-[2px] disabled:opacity-40"
-                              style={{ fontFamily: "var(--font-mono), monospace", borderColor: "var(--border-default)", color: "var(--text-primary)" }}
-                            >
-                              {(draft?.status ?? level.status) === "PUBLISHED" ? "Unpublish" : "Publish"}
-                            </button>
-                            <button
                               onClick={() => {
                                 if (window.confirm(`Delete ${level.name}? This only hides it from public view.`)) {
                                   deleteMutation.mutate(level.id);

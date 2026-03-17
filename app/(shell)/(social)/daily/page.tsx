@@ -5,6 +5,23 @@ import { CountdownTimer } from "@/components/social/CountdownTimer";
 import { PastChallenges } from "@/components/social/PastChallenges";
 import { formatTimeMs, formatDate } from "@/lib/format";
 
+type PastChallengeRecord = {
+  id: string;
+  number: number;
+  date: Date;
+  puzzle: {
+    grid: unknown;
+    size: number;
+  };
+  solves: Array<{
+    timeMs: number;
+    user: {
+      username: string;
+      image: string | null;
+    };
+  }>;
+};
+
 export const metadata = {
   title: "Daily Challenge — Princess Puzzle",
 };
@@ -72,7 +89,7 @@ export default async function DailyPage() {
     challengeDate >= yesterdayStart &&
     challengeDate <= todayEnd;
 
-  const formattedPast = pastChallenges.map((c) => ({
+  const formattedPast = (pastChallenges as PastChallengeRecord[]).map((c) => ({
     id: c.id,
     number: c.number,
     date: c.date.toISOString(),

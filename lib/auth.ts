@@ -9,6 +9,10 @@ import { db } from "@/lib/db";
 import { authConfig } from "@/auth.config";
 
 type AppRole = "USER" | "ADMIN";
+type AppJwtFields = {
+  role?: AppRole;
+  username?: string;
+};
 
 declare module "next-auth" {
   interface Session {
@@ -21,13 +25,6 @@ declare module "next-auth" {
 
   interface User {
     role?: AppRole;
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    role?: AppRole;
-    username?: string;
   }
 }
 
@@ -80,24 +77,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Runs on sign-in and token refresh. `user` is only present on initial sign-in.
     // We store the DB username in token.name (an existing JWT field).
     async jwt({ token, user }) {
+      const appToken = token as typeof token & AppJwtFields;
       const userId = user?.id ?? token.sub;
       if (userId) {
         const dbUser = await db.user.findUnique({
           where: { id: userId },
           select: { username: true, role: true },
         });
-        token.name = dbUser?.username ?? token.name ?? "";
-        token.username = dbUser?.username ?? token.username ?? "";
-        token.role = dbUser?.role ?? token.role ?? "USER";
+        appToken.name = dbUser?.username ?? appToken.name ?? "";
+        appToken.username = dbUser?.username ?? appToken.username ?? "";
+        appToken.role = dbUser?.role ?? appToken.role ?? "USER";
       }
-      return token;
+      return appToken;
     },
     // Exposes token data to the client-side session object.
     async session({ session, token }) {
+      const appToken = token as typeof token & AppJwtFields;
       if (session.user && token.sub) {
         session.user.id = token.sub;
-        session.user.username = token.username ?? token.name ?? "";
-        session.user.role = token.role ?? "USER";
+        session.user.username = appToken.username ?? appToken.name ?? "";
+        session.user.role = appToken.role ?? "USER";
       }
       return session;
     },

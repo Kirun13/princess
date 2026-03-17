@@ -1,12 +1,33 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcryptjs";
 import puzzles from "../puzzles.json";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const db = new PrismaClient({ adapter });
 
 async function main() {
+  const adminPasswordHash = await bcrypt.hash("Qqwerty1!", 10);
+
+  await db.user.upsert({
+    where: { email: "admin@admin" },
+    update: {
+      username: "admin",
+      passwordHash: adminPasswordHash,
+      role: "ADMIN",
+      emailVerified: new Date(),
+    },
+    create: {
+      username: "admin",
+      email: "admin@admin",
+      passwordHash: adminPasswordHash,
+      role: "ADMIN",
+      emailVerified: new Date(),
+    },
+  });
+
+  console.log("  ✓ Admin user seeded (admin@admin)");
   console.log(`Seeding ${puzzles.length} levels...`);
 
   for (let i = 0; i < puzzles.length; i++) {
