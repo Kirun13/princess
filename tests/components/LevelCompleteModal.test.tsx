@@ -182,4 +182,37 @@ describe("LevelCompleteModal", () => {
     expect(within(actions).getByText(/sign in to rate/i)).toBeInTheDocument();
     expect(within(actions).getByRole("button", { name: /next level/i })).toBeInTheDocument();
   });
+
+  it("uses daily-specific solve copy instead of personal best language", () => {
+    mockUseMutation.mockImplementation((options?: { onSuccess?: unknown }) =>
+      options && "onSuccess" in options ? createRatingMutation() : createSolveMutation({
+        isSuccess: true,
+        data: {
+          solveId: "solve-daily-1",
+          timeMs: 13_779,
+          isPersonalBest: true,
+          rank: 3,
+          totalSolvers: 7,
+          averageTimeMs: 11_000,
+          topTimeMs: 7_611,
+          beatAverage: false,
+          unlockedAchievements: [],
+        },
+      })
+    );
+
+    render(
+      <LevelCompleteModal
+        puzzleId="puzzle-1"
+        dailyChallengeId="daily-1"
+        isAuthenticated
+        userRating={null}
+        avgRating={4.2}
+        ratingCount={12}
+      />
+    );
+
+    expect(screen.getByText(/daily time recorded/i)).toBeInTheDocument();
+    expect(screen.queryByText(/personal best/i)).not.toBeInTheDocument();
+  });
 });

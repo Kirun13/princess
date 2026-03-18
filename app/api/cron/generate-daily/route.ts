@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const requestContext = buildRequestContext(req, "/api/cron/generate-daily");
   logRequestStart(requestContext);
 
-  // Verify Vercel cron secret
+  // Verify the shared cron secret before allowing a scheduled generate run.
   const authHeader = req.headers.get("authorization");
   const secret = process.env.CRON_SECRET;
   if (!secret || authHeader !== `Bearer ${secret}`) {
@@ -28,7 +28,9 @@ export async function GET(req: NextRequest) {
     if (!result.created) {
       logRequestComplete(requestContext, 200, startedAt, {
         skipped: true,
+        challengeDate: result.challenge.date.toISOString(),
         challengeNumber: result.challenge.number,
+        puzzleId: result.challenge.puzzle.id,
       });
       return NextResponse.json({
         ok: true,
@@ -40,7 +42,9 @@ export async function GET(req: NextRequest) {
 
     logRequestComplete(requestContext, 200, startedAt, {
       skipped: false,
+      challengeDate: result.challenge.date.toISOString(),
       challengeNumber: result.challenge.number,
+      puzzleId: result.challenge.puzzle.id,
     });
 
     return NextResponse.json({
@@ -56,7 +60,10 @@ export async function GET(req: NextRequest) {
       500,
       startedAt,
       "puzzle-generator.request.failed",
-      err
+      err,
+      {
+        generatorUrl: process.env.PUZZLE_GENERATOR_URL,
+      }
     );
     return NextResponse.json({ error: "Puzzle generation failed" }, { status: 500 });
   }

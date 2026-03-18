@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { resolveDailyChallengeState } from "@/lib/daily-challenge";
 import { formatDate, formatTimeMs } from "@/lib/format";
 
 export const metadata = {
@@ -9,20 +10,22 @@ export const metadata = {
 
 export default async function DailyLeaderboardPage() {
   const session = await auth();
+  const { activeChallengeForToday } = await resolveDailyChallengeState();
 
-  const challenge = await db.dailyChallenge.findFirst({
-    where: { date: { lte: new Date() } },
-    orderBy: { date: "desc" },
-    include: {
-      solves: {
-        orderBy: [{ timeMs: "asc" }, { completedAt: "asc" }],
-        take: 25,
+  const challenge = activeChallengeForToday
+    ? await db.dailyChallenge.findUnique({
+        where: { id: activeChallengeForToday.id },
         include: {
-          user: { select: { id: true, username: true, image: true } },
+          solves: {
+            orderBy: [{ timeMs: "asc" }, { completedAt: "asc" }],
+            take: 25,
+            include: {
+              user: { select: { id: true, username: true, image: true } },
+            },
+          },
         },
-      },
-    },
-  });
+      })
+    : null;
 
   if (!challenge) {
     return (

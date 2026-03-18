@@ -1,20 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-function getMsUntilMidnightUTC(): number {
-  const now = new Date();
-  const midnight = new Date(now);
-  midnight.setUTCHours(24, 0, 0, 0);
-  return midnight.getTime() - now.getTime();
-}
-
-function getNextUtcMidnight(): Date {
-  const now = new Date();
-  const midnight = new Date(now);
-  midnight.setUTCHours(24, 0, 0, 0);
-  return midnight;
-}
+import { getMsUntilNextUtcMidnight, getNextUtcMidnight } from "@/lib/daily-window";
 
 function formatCountdown(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -32,13 +19,14 @@ export function CountdownTimer() {
 
   useEffect(() => {
     const tick = () => {
-      const ms = getMsUntilMidnightUTC();
+      const now = new Date();
+      const ms = getMsUntilNextUtcMidnight(now);
       setRemaining(ms);
       setLocalResetTime(
         new Intl.DateTimeFormat(undefined, {
           hour: "numeric",
           minute: "2-digit",
-        }).format(getNextUtcMidnight())
+        }).format(getNextUtcMidnight(now))
       );
       if (ms <= 0) window.location.reload();
     };

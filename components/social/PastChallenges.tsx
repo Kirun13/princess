@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ReadOnlyGrid } from "@/components/game/ReadOnlyGrid";
 import { formatTimeMs, formatDate } from "@/lib/format";
@@ -81,9 +82,18 @@ export function PastChallenges({ challenges }: PastChallengesProps) {
 
                 {/* Top finishers */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mb-3">
-                    Top Finishers
-                  </p>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest">
+                      Top Finishers
+                    </p>
+                    <Link
+                      href={`/daily/${challenge.number}`}
+                      className="text-xs font-semibold"
+                      style={{ color: "var(--brand-light)", fontFamily: "var(--font-mono), monospace" }}
+                    >
+                      Open Archive →
+                    </Link>
+                  </div>
                   {challenge.topSolves.length === 0 ? (
                     <p className="text-sm text-[var(--text-muted)]">
                       No solves on record.

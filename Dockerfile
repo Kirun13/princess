@@ -6,6 +6,8 @@ WORKDIR /app
 FROM base AS deps
 
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
 RUN npm ci \
   && npm install --no-save \
     "lightningcss-linux-x64-gnu@$(node -p 'require(\"./package-lock.json\").packages[\"node_modules/lightningcss\"].version')" \

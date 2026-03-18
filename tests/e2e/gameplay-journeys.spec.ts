@@ -61,7 +61,7 @@ test.describe("gameplay-adjacent journeys", () => {
       (await noPastChallenges.isVisible()) || (await pastChallengeToggles.count()) > 0;
     expect(hasPastChallengesUi).toBeTruthy();
 
-    const noChallengeToday = page.getByText(/no challenge available today/i);
+    const noChallengeToday = page.getByText(/today(?:'|’)s challenge isn(?:'|’)t published yet/i);
     if (await noChallengeToday.isVisible()) {
       await expect(
         page.getByRole("link", { name: /play today(?:'|’)s challenge/i })

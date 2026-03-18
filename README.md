@@ -88,6 +88,46 @@ Required Railway variables:
 
 Optional variables (feature-dependent): OAuth, Upstash Redis, email SMTP, puzzle generator service.
 
+### Daily Cron On Railway
+
+The daily generator flow is designed to stay route-based:
+
+`Railway cron service -> app private URL /api/cron/generate-daily -> createTomorrowDailyChallengeIfMissing() -> generator private URL /generate`
+
+Recommended setup:
+
+1. Keep the main web app service exactly as it is.
+2. Create a second Railway service from the same repo for scheduled jobs.
+3. Set that cron service's start command to:
+
+```bash
+npm run cron:generate-daily
+```
+
+4. Set these variables on the cron service:
+   - `APP_INTERNAL_URL`: the app service's private Railway URL
+   - `CRON_SECRET`: the same value used by the app service
+5. Set these variables on the app service:
+   - `CRON_SECRET`
+   - `PUZZLE_GENERATOR_URL`: the generator service's private Railway URL
+   - `PUZZLE_GENERATOR_API_KEY` if your generator requires it
+6. Schedule the cron service before `00:00 UTC`.
+
+Default schedule:
+
+```text
+0 20 * * *
+```
+
+Why `20:00 UTC`? The job creates tomorrow's challenge. Running it after midnight would create the following day's challenge instead of today's.
+
+Validation checklist:
+
+- Run `npm run cron:generate-daily` from the cron service shell once and confirm a `200` response.
+- Run it a second time and confirm the response is a safe skip, not a duplicate create.
+- Confirm app logs for `/api/cron/generate-daily` include `challengeDate`, `challengeNumber`, and `puzzleId`.
+- Confirm generator failures return `500` and are visible in Railway logs.
+
 ## Logging on Railway
 
 This app logs to stdout with structured JSON using `pino`, which Railway captures automatically.

@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { resolveDailyChallengeState } from "@/lib/daily-challenge";
 import { signStartToken } from "@/lib/token";
 
 export async function GET() {
   const session = await auth();
+  const { activeChallengeForToday } = await resolveDailyChallengeState();
 
-  const challenge = await db.dailyChallenge.findFirst({
-    where: { date: { lte: new Date() } },
-    orderBy: { date: "desc" },
-    include: {
-      puzzle: { select: { id: true, size: true, grid: true } },
-    },
-  });
+  const challenge = activeChallengeForToday
+    ? await db.dailyChallenge.findUnique({
+        where: { id: activeChallengeForToday.id },
+        include: {
+          puzzle: { select: { id: true, size: true, grid: true } },
+        },
+      })
+    : null;
 
   if (!challenge) {
     return NextResponse.json({ error: "No daily challenge today" }, { status: 404 });

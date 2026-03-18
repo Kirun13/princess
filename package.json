@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "build": "next build",
     "start": "next start",
+    "cron:generate-daily": "node scripts/cron-generate-daily.mjs",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",

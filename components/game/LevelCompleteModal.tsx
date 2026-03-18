@@ -354,7 +354,21 @@ export function LevelCompleteModal({
                         {mutation.isSuccess && (
                           <div className="space-y-4">
                             <div className="text-center lg:text-left">
-                              {mutation.data.isPersonalBest && (
+                              {dailyChallengeId ? (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  transition={{ delay: 0.5, type: "spring", stiffness: 300, damping: 20 }}
+                                  className="inline-block px-4 py-1.5 rounded-full text-xs font-bold mb-2"
+                                  style={{
+                                    background: "var(--gradient-brand-success)",
+                                    color: "white",
+                                    fontFamily: "var(--font-mono), monospace",
+                                  }}
+                                >
+                                  Daily time recorded
+                                </motion.div>
+                              ) : mutation.data.isPersonalBest && (
                                 <motion.div
                                   initial={{ scale: 0 }}
                                   animate={{ scale: 1 }}

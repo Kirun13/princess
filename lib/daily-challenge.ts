@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { getUtcDayWindow } from "@/lib/daily-window";
 
 export type PuzzleRecord = {
   grid: number[][];
@@ -8,11 +9,55 @@ export type PuzzleRecord = {
   difficulty: string;
 };
 
+export type DailyChallengeSummary = {
+  id: string;
+  number: number;
+  date: Date;
+  puzzleId: string;
+};
+
+export async function resolveDailyChallengeState(now = new Date()) {
+  const { todayStartUtc, todayEndUtc, tomorrowStartUtc } = getUtcDayWindow(now);
+
+  const [activeChallengeForToday, latestPublishedChallenge] = await Promise.all([
+    db.dailyChallenge.findFirst({
+      where: {
+        date: {
+          gte: todayStartUtc,
+          lte: todayEndUtc,
+        },
+      },
+      orderBy: { date: "desc" },
+      select: {
+        id: true,
+        number: true,
+        date: true,
+        puzzleId: true,
+      },
+    }),
+    db.dailyChallenge.findFirst({
+      where: { date: { lte: now } },
+      orderBy: { date: "desc" },
+      select: {
+        id: true,
+        number: true,
+        date: true,
+        puzzleId: true,
+      },
+    }),
+  ]);
+
+  return {
+    todayStartUtc,
+    todayEndUtc,
+    tomorrowStartUtc,
+    activeChallengeForToday,
+    latestPublishedChallenge,
+  };
+}
+
 export function getTomorrowUtcDate() {
-  const tomorrow = new Date();
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  tomorrow.setUTCHours(0, 0, 0, 0);
-  return tomorrow;
+  return getUtcDayWindow().tomorrowStartUtc;
 }
 
 export function sampleDailySize(): number {

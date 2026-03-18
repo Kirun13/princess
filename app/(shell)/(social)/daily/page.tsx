@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { resolveDailyChallengeState } from "@/lib/daily-challenge";
 import { CountdownTimer } from "@/components/social/CountdownTimer";
 import { PastChallenges } from "@/components/social/PastChallenges";
 import { formatTimeMs, formatDate } from "@/lib/format";
@@ -28,23 +29,17 @@ export const metadata = {
 
 export default async function DailyPage() {
   const session = await auth();
-
-  const todayEnd = new Date();
-  todayEnd.setUTCHours(23, 59, 59, 999);
-
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
-
-  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
+  const { activeChallengeForToday, todayStartUtc } = await resolveDailyChallengeState();
 
   const [challenge, pastChallenges] = await Promise.all([
-    db.dailyChallenge.findFirst({
-      where: { date: { lte: todayEnd } },
-      orderBy: { date: "desc" },
-      include: { puzzle: { select: { avgRating: true, ratingCount: true } } },
-    }),
+    activeChallengeForToday
+      ? db.dailyChallenge.findUnique({
+          where: { id: activeChallengeForToday.id },
+          include: { puzzle: { select: { avgRating: true, ratingCount: true } } },
+        })
+      : Promise.resolve(null),
     db.dailyChallenge.findMany({
-      where: { date: { lt: todayStart } },
+      where: { date: { lt: todayStartUtc } },
       orderBy: { date: "desc" },
       include: {
         puzzle: { select: { grid: true, size: true } },
@@ -82,13 +77,6 @@ export default async function DailyPage() {
     }
   }
 
-  // Compute if challenge is for today (not a past challenge shown today)
-  const challengeDate = challenge ? new Date(challenge.date) : null;
-  const isToday =
-    challengeDate !== null &&
-    challengeDate >= yesterdayStart &&
-    challengeDate <= todayEnd;
-
   const formattedPast = (pastChallenges as PastChallengeRecord[]).map((c) => ({
     id: c.id,
     number: c.number,
@@ -117,7 +105,7 @@ export default async function DailyPage() {
         {!challenge ? (
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-8 text-center">
             <p className="text-[var(--text-muted)]">
-              No challenge available today. Check back soon!
+              Today&apos;s challenge isn&apos;t published yet. Daily boards go live at 00:00 UTC.
             </p>
           </div>
         ) : (
@@ -125,7 +113,7 @@ export default async function DailyPage() {
             <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
               <div>
                 <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mb-1">
-                  {isToday ? "Today's Challenge" : "Current Challenge"}
+                  Today&apos;s Challenge
                 </p>
                 <p
                   className="text-2xl font-bold text-[var(--text)]"
@@ -201,7 +189,7 @@ export default async function DailyPage() {
                     View Leaderboard
                   </Link>
                   <Link
-                    href="/play/daily"
+                    href={`/daily/${challenge.number}`}
                     className="inline-flex px-4 py-2 rounded-[8px] text-sm font-semibold"
                     style={{
                       border: "1px solid var(--border-default)",
@@ -209,7 +197,7 @@ export default async function DailyPage() {
                       fontFamily: "var(--font-mono), monospace",
                     }}
                   >
-                    Replay Board
+                    View Archive
                   </Link>
                 </div>
               </div>
