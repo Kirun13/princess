@@ -44,6 +44,56 @@ async function expectPlayDailyState(page: Page) {
 }
 
 test.describe("gameplay-adjacent journeys", () => {
+  test("seeded level 1 supports pause, resume, and pixi-board solving", async ({ page }) => {
+    await page.goto("/levels");
+
+    await expect(page.getByRole("heading", { name: /choose a level/i })).toBeVisible();
+    await page.getByRole("button", { name: "All" }).nth(1).click();
+
+    const searchInput = page.getByPlaceholder(/search by name or #/i);
+    await searchInput.fill("Level 1");
+
+    const levelLink = page.getByRole("link", { name: /level 1/i }).first();
+    await expect(levelLink).toBeVisible();
+    const levelHref = await levelLink.getAttribute("href");
+    expect(levelHref).toMatch(/^\/play\//);
+    await page.goto(levelHref!);
+
+    const board = page.getByTestId("game-board");
+    await expect(board).toBeVisible();
+    await expect(board).toHaveAttribute("data-board-size", "4");
+
+    await page.getByRole("button", { name: /pause/i }).click();
+    await expect(page.getByRole("button", { name: /resume/i })).toBeVisible();
+    await page.getByRole("button", { name: /resume/i }).click();
+
+    const box = await board.boundingBox();
+    expect(box).toBeTruthy();
+    if (!box) {
+      return;
+    }
+
+    const cellSize = box.width / 4;
+    const solution: Array<[number, number]> = [
+      [0, 1],
+      [1, 3],
+      [2, 0],
+      [3, 2],
+    ];
+
+    for (const [row, col] of solution) {
+      await board.dblclick({
+        position: {
+          x: col * cellSize + cellSize / 2,
+          y: row * cellSize + cellSize / 2,
+        },
+      });
+    }
+
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByText(/puzzle solved!/i)).toBeVisible();
+  });
+
   test("daily page renders reliably and handles CTA variants", async ({ page }) => {
     await page.goto("/daily");
 

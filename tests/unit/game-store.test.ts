@@ -21,6 +21,8 @@ describe("game store", () => {
       grid: null,
       size: 0,
       puzzleId: null,
+      board: null,
+      validation: null,
       queens: [],
       conflicts: new Set(),
       marks: new Set<string>(),
@@ -46,6 +48,36 @@ describe("game store", () => {
 
     useGameStore.getState().cycleCell(0, 0);
     expect(useGameStore.getState().queens).toHaveLength(0);
+  });
+
+  it("keeps canonical board matrices while exposing queen positions for solve payloads", () => {
+    useGameStore.getState().loadPuzzle([[0]], "single-cell", "start-token");
+
+    useGameStore.getState().placeQueen(0, 0);
+
+    expect(useGameStore.getState().board?.queens[0][0]).toBe(true);
+    expect(useGameStore.getState().queens).toEqual([[0, 0]]);
+    expect(useGameStore.getState().isSolved).toBe(true);
+  });
+
+  it("derives conflicts from the engine validation layer", () => {
+    useGameStore.getState().loadPuzzle(
+      [
+        [0, 0, 1, 1],
+        [0, 0, 1, 1],
+        [2, 2, 3, 3],
+        [2, 2, 3, 3],
+      ],
+      "conflict-puzzle",
+      "start-token",
+    );
+
+    useGameStore.getState().placeQueen(0, 0);
+    useGameStore.getState().placeQueen(0, 2);
+
+    expect(useGameStore.getState().conflicts.has("0,0")).toBe(true);
+    expect(useGameStore.getState().conflicts.has("0,2")).toBe(true);
+    expect(useGameStore.getState().validation?.rowConflicts).toEqual([0]);
   });
 
   it("tracks active time across pause and resume", () => {
