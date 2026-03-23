@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGameStore } from "@/lib/store/gameStore";
 
 type Grid = number[][];
@@ -31,18 +31,24 @@ type PendingClick = {
   cell: CellCoord | null;
 };
 
+type KeyboardPaintState = {
+  isSpaceHeld: boolean;
+  action: ToggleAction | null;
+  startCell: CellCoord | null;
+  visited: Set<string>;
+};
+
 type BoardTheme = {
+  shell: number;
   board: number;
   frame: number;
   gridLine: number;
-  text: number;
-  textMuted: number;
-  success: number;
-  warning: number;
-  error: number;
-  regionAlpha: number;
-  regionBorderAlpha: number;
-  boardGlowAlpha: number;
+  regionBorder: number;
+  queen: number;
+  mark: number;
+  focus: number;
+  hint: number;
+  conflict: number;
   regionColors: number[];
 };
 
@@ -90,25 +96,46 @@ function parseHexColor(raw: string | null | undefined, fallback: string): number
   return Number.parseInt(value.replace("#", ""), 16);
 }
 
+function blendColor(base: number, accent: number, ratio: number): number {
+  const clampedRatio = Math.max(0, Math.min(1, ratio));
+  const baseRed = (base >> 16) & 0xff;
+  const baseGreen = (base >> 8) & 0xff;
+  const baseBlue = base & 0xff;
+  const accentRed = (accent >> 16) & 0xff;
+  const accentGreen = (accent >> 8) & 0xff;
+  const accentBlue = accent & 0xff;
+
+  const red = Math.round(baseRed + (accentRed - baseRed) * clampedRatio);
+  const green = Math.round(baseGreen + (accentGreen - baseGreen) * clampedRatio);
+  const blue = Math.round(baseBlue + (accentBlue - baseBlue) * clampedRatio);
+
+  return (red << 16) | (green << 8) | blue;
+}
+
 function resolveBoardTheme(): BoardTheme {
   const styles = getComputedStyle(document.documentElement);
   const isLight = document.documentElement.dataset.theme === "light";
+  const board = parseHexColor(styles.getPropertyValue("--board-surface"), "#121116");
+  const regionMixRatio = isLight ? 0.22 : 0.27;
+  const rawRegionColors = REGION_FALLBACKS.map((fallback, index) =>
+    parseHexColor(
+      styles.getPropertyValue(`--region-${["red", "teal", "gold", "green", "purple", "blue", "orange", "pink"][index]}`),
+      fallback,
+    ),
+  );
 
   return {
-    board: parseHexColor(styles.getPropertyValue("--surface-01"), "#141420"),
-    frame: parseHexColor(styles.getPropertyValue("--border-default"), "#2A2A3A"),
-    gridLine: parseHexColor(styles.getPropertyValue("--border-subtle"), "#1E1E2E"),
-    text: parseHexColor(styles.getPropertyValue("--text-primary"), "#F0F0FF"),
-    textMuted: parseHexColor(styles.getPropertyValue("--text-muted"), "#4A4A6A"),
-    success: parseHexColor(styles.getPropertyValue("--color-success"), "#22C55E"),
-    warning: parseHexColor(styles.getPropertyValue("--color-warning"), "#F59E0B"),
-    error: parseHexColor(styles.getPropertyValue("--color-error"), "#EF4444"),
-    regionAlpha: isLight ? 0.34 : 0.28,
-    regionBorderAlpha: isLight ? 0.7 : 0.56,
-    boardGlowAlpha: isLight ? 0.1 : 0.18,
-    regionColors: REGION_FALLBACKS.map((fallback, index) =>
-      parseHexColor(styles.getPropertyValue(`--region-${["red", "teal", "gold", "green", "purple", "blue", "orange", "pink"][index]}`), fallback),
-    ),
+    shell: parseHexColor(styles.getPropertyValue("--board-shell"), "#19171D"),
+    board,
+    frame: parseHexColor(styles.getPropertyValue("--board-frame"), "#4F4856"),
+    gridLine: parseHexColor(styles.getPropertyValue("--board-grid"), "#2D2833"),
+    regionBorder: parseHexColor(styles.getPropertyValue("--board-region-border"), "#817888"),
+    queen: parseHexColor(styles.getPropertyValue("--board-queen"), "#F3E7D1"),
+    mark: parseHexColor(styles.getPropertyValue("--board-mark"), "#938A9B"),
+    focus: parseHexColor(styles.getPropertyValue("--board-focus"), "#EEE8F4"),
+    hint: parseHexColor(styles.getPropertyValue("--board-hint"), "#E0A64A"),
+    conflict: parseHexColor(styles.getPropertyValue("--board-conflict"), "#D77468"),
+    regionColors: rawRegionColors.map((color) => blendColor(board, color, regionMixRatio)),
   };
 }
 
@@ -133,6 +160,16 @@ function toggleResult(row: number, col: number, queens: [number, number][], mark
   return hasQueen || marks.has(`${row},${col}`) ? "empty" : "mark";
 }
 
+function dragActionForCell(cell: CellCoord, queens: [number, number][], marks: Set<string>): ToggleAction | null {
+  const [row, col] = cell;
+  const hasQueen = queens.some(([queenRow, queenCol]) => queenRow === row && queenCol === col);
+  if (hasQueen) {
+    return null;
+  }
+
+  return toggleResult(row, col, queens, marks);
+}
+
 function destroyChildren(app: PixiApplication) {
   const removed = app.stage.removeChildren();
   removed.forEach((child) => child.destroy({ children: true }));
@@ -147,16 +184,16 @@ function drawBoardScene(input: {
   conflicts: Set<string>;
   highlightConflicts: boolean;
   hintCell: CellCoord | null;
-  focusedCell: CellCoord;
+  hoveredCell: CellCoord | null;
+  pressedCell: CellCoord | null;
   boardPixels: number;
-  isSolved: boolean;
 }) {
-  const { app, pixi, grid, queens, marks, conflicts, highlightConflicts, hintCell, focusedCell, boardPixels, isSolved } =
-    input;
+  const { app, pixi, grid, queens, marks, conflicts, highlightConflicts, hintCell, hoveredCell, pressedCell, boardPixels } = input;
 
   const theme = resolveBoardTheme();
   const size = grid.length;
-  const frameInset = 6;
+  const isLight = document.documentElement.dataset.theme === "light";
+  const frameInset = 8;
   const boardSize = boardPixels - frameInset * 2;
   const cellSize = boardSize / size;
   const queenSet = new Set(queens.map((queen) => cellKey(queen)));
@@ -168,13 +205,14 @@ function drawBoardScene(input: {
   app.stage.addChild(root);
 
   const panel = new pixi.Graphics()
-    .roundRect(0, 0, boardPixels, boardPixels, 14)
-    .fill({ color: theme.board })
-    .stroke({ color: theme.frame, width: 1.5 });
+    .roundRect(0, 0, boardPixels, boardPixels, 16)
+    .fill({ color: theme.shell })
+    .stroke({ color: theme.frame, alpha: 0.62, width: 1.25 });
 
-  const glow = new pixi.Graphics()
-    .roundRect(1, 1, boardPixels - 2, boardPixels - 2, 14)
-    .stroke({ color: theme.warning, alpha: isSolved ? 0.28 : theme.boardGlowAlpha, width: 1 });
+  const boardSurface = new pixi.Graphics()
+    .roundRect(frameInset, frameInset, boardSize, boardSize, 12)
+    .fill({ color: theme.board })
+    .stroke({ color: theme.frame, alpha: isLight ? 0.36 : 0.28, width: 1 });
 
   const regionLayer = new pixi.Graphics();
   const overlayLayer = new pixi.Graphics();
@@ -182,7 +220,7 @@ function drawBoardScene(input: {
   const borderLayer = new pixi.Graphics();
   const symbolLayer = new pixi.Container();
 
-  root.addChild(panel, glow, regionLayer, overlayLayer, gridLayer, borderLayer, symbolLayer);
+  root.addChild(panel, boardSurface, regionLayer, overlayLayer, gridLayer, borderLayer, symbolLayer);
 
   for (let row = 0; row < size; row += 1) {
     for (let col = 0; col < size; col += 1) {
@@ -192,36 +230,54 @@ function drawBoardScene(input: {
       const key = `${row},${col}`;
       const isConflict = highlightConflicts && conflicts.has(key);
       const isHinted = hintCell?.[0] === row && hintCell?.[1] === col;
-      const isFocused = focusedCell[0] === row && focusedCell[1] === col;
+      const isHovered = hoveredCell?.[0] === row && hoveredCell?.[1] === col;
+      const isPressed = pressedCell?.[0] === row && pressedCell?.[1] === col;
 
       regionLayer
         .rect(x, y, cellSize, cellSize)
-        .fill({ color: regionColor, alpha: theme.regionAlpha });
+        .fill({ color: regionColor, alpha: 1 });
 
-      if (isFocused) {
+      if (isHovered) {
         overlayLayer
-          .roundRect(x + 3, y + 3, cellSize - 6, cellSize - 6, 8)
-          .stroke({ color: theme.text, alpha: 0.9, width: 2 });
+          .rect(x, y, cellSize, cellSize)
+          .fill({ color: theme.focus, alpha: isLight ? 0.08 : 0.09 });
+        overlayLayer
+          .roundRect(x + 4, y + 4, cellSize - 8, cellSize - 8, 6)
+          .stroke({ color: theme.focus, alpha: 0.5, width: 1.5 });
+      }
+
+      if (isPressed) {
+        overlayLayer
+          .rect(x, y, cellSize, cellSize)
+          .fill({ color: theme.focus, alpha: isLight ? 0.11 : 0.13 });
+        overlayLayer
+          .roundRect(x + 2.5, y + 2.5, cellSize - 5, cellSize - 5, 6)
+          .stroke({ color: theme.focus, alpha: 0.72, width: 1.8 });
       }
 
       if (isHinted) {
         overlayLayer
-          .roundRect(x + 6, y + 6, cellSize - 12, cellSize - 12, 7)
-          .stroke({ color: theme.warning, alpha: 0.95, width: 2.5 });
+          .rect(x, y, cellSize, cellSize)
+          .fill({ color: theme.hint, alpha: isLight ? 0.05 : 0.07 });
+        overlayLayer
+          .roundRect(x + 5, y + 5, cellSize - 10, cellSize - 10, 6)
+          .stroke({ color: theme.hint, alpha: 0.95, width: 2.25 });
       }
 
       if (isConflict) {
         overlayLayer
-          .roundRect(x + 2, y + 2, cellSize - 4, cellSize - 4, 8)
-          .fill({ color: theme.error, alpha: 0.16 })
-          .stroke({ color: theme.error, alpha: 0.52, width: 2 });
+          .rect(x, y, cellSize, cellSize)
+          .fill({ color: theme.conflict, alpha: isLight ? 0.12 : 0.15 });
+        overlayLayer
+          .roundRect(x + 3, y + 3, cellSize - 6, cellSize - 6, 6)
+          .stroke({ color: theme.conflict, alpha: 0.7, width: 1.9 });
       }
 
       if (queenSet.has(key)) {
         const queen = new pixi.Text({
           text: "♛",
           style: {
-            fill: isConflict ? theme.error : isSolved ? theme.success : regionColor,
+            fill: isConflict ? theme.conflict : theme.queen,
             fontFamily: "Georgia",
             fontSize: Math.max(22, Math.floor(cellSize * 0.54)),
             fontWeight: "700",
@@ -235,14 +291,14 @@ function drawBoardScene(input: {
         const mark = new pixi.Text({
           text: "×",
           style: {
-            fill: isHinted ? theme.warning : regionColor,
+            fill: isHinted ? theme.hint : theme.mark,
             fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
             fontSize: Math.max(18, Math.floor(cellSize * 0.42)),
             fontWeight: "700",
           },
         });
         mark.anchor.set(0.5);
-        mark.alpha = isHinted ? 1 : 0.72;
+        mark.alpha = isHinted ? 1 : 0.84;
         mark.position.set(x + cellSize * 0.5, y + cellSize * 0.52);
         symbolLayer.addChild(mark);
       }
@@ -254,7 +310,7 @@ function drawBoardScene(input: {
     gridLayer.moveTo(frameInset, offset).lineTo(frameInset + boardSize, offset);
     gridLayer.moveTo(offset, frameInset).lineTo(offset, frameInset + boardSize);
   }
-  gridLayer.stroke({ color: theme.gridLine, width: 1, alpha: 0.9, pixelLine: true });
+  gridLayer.stroke({ color: theme.gridLine, width: 1, alpha: isLight ? 0.58 : 0.52, pixelLine: true });
 
   for (let row = 0; row < size; row += 1) {
     for (let col = 0; col < size; col += 1) {
@@ -276,7 +332,12 @@ function drawBoardScene(input: {
       }
     }
   }
-  borderLayer.stroke({ color: theme.textMuted, width: Math.max(1.5, cellSize * 0.06), alpha: theme.regionBorderAlpha });
+  borderLayer.stroke({
+    color: theme.regionBorder,
+    width: Math.max(2, cellSize * 0.085),
+    alpha: isLight ? 0.94 : 0.9,
+    pixelLine: true,
+  });
 }
 
 export default function GameBoard({
@@ -306,25 +367,19 @@ export default function GameBoard({
     visited: new Set<string>(),
     hasDragged: false,
   });
-  const spaceActionRef = useRef<ToggleAction | null>(null);
+  const keyboardPaintRef = useRef<KeyboardPaintState>({
+    isSpaceHeld: false,
+    action: null,
+    startCell: null,
+    visited: new Set<string>(),
+  });
 
-  const [focusedCell, setFocusedCell] = useState<CellCoord>([0, 0]);
+  const [hoveredCell, setHoveredCell] = useState<CellCoord | null>(null);
+  const [pressedCell, setPressedCell] = useState<CellCoord | null>(null);
   const [boardPixels, setBoardPixels] = useState(0);
   const [pixiReadyNonce, setPixiReadyNonce] = useState(0);
   const [themeNonce, setThemeNonce] = useState(0);
   const size = grid.length;
-
-  const focusStatus = useMemo(() => {
-    const [row, col] = focusedCell;
-    const key = `${row},${col}`;
-    const state = queens.some(([queenRow, queenCol]) => queenRow === row && queenCol === col)
-      ? "queen placed"
-      : marks.has(key)
-        ? "marked"
-        : "empty";
-
-    return `Row ${row + 1}, column ${col + 1}, region ${grid[row][col] + 1}, ${state}`;
-  }, [focusedCell, grid, marks, queens]);
 
   const isInteractionLocked = isSolved || isPaused;
 
@@ -401,12 +456,23 @@ export default function GameBoard({
     };
   }, []);
 
+  const resetKeyboardPaint = useCallback(() => {
+    keyboardPaintRef.current = {
+      isSpaceHeld: false,
+      action: null,
+      startCell: null,
+      visited: new Set<string>(),
+    };
+  }, []);
+
   useEffect(() => {
     loadPuzzle(grid, puzzleId, startToken ?? "");
-    setFocusedCell([0, 0]);
+    setHoveredCell(null);
+    setPressedCell(null);
     clearPendingClick();
     resetDrag();
-  }, [clearPendingClick, grid, loadPuzzle, puzzleId, resetDrag, startToken]);
+    resetKeyboardPaint();
+  }, [clearPendingClick, grid, loadPuzzle, puzzleId, resetDrag, resetKeyboardPaint, startToken]);
 
   useEffect(() => {
     const compute = () => setBoardPixels(getBoardPixels(size));
@@ -494,25 +560,79 @@ export default function GameBoard({
       conflicts,
       highlightConflicts,
       hintCell: hintCell ?? null,
-      focusedCell,
+      hoveredCell,
+      pressedCell,
       boardPixels,
-      isSolved,
     });
   }, [
     boardPixels,
     conflicts,
-    focusedCell,
     grid,
     highlightConflicts,
+    hoveredCell,
     hintCell,
-    isSolved,
     marks,
     pixiReadyNonce,
+    pressedCell,
     queens,
     themeNonce,
   ]);
 
   useEffect(() => () => clearPendingClick(), [clearPendingClick]);
+
+  useEffect(() => {
+    const isTypingTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) {
+        return false;
+      }
+
+      return (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.isContentEditable
+      );
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== " " || event.repeat || isInteractionLocked || !hoveredCell || isTypingTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      const state = useGameStore.getState();
+      keyboardPaintRef.current = {
+        isSpaceHeld: true,
+        action: dragActionForCell(hoveredCell, state.queens, state.marks),
+        startCell: hoveredCell,
+        visited: new Set<string>(),
+      };
+      setPressedCell(hoveredCell);
+      queuePrimaryTap(hoveredCell);
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key !== " ") {
+        return;
+      }
+
+      if (keyboardPaintRef.current.isSpaceHeld) {
+        event.preventDefault();
+      }
+
+      resetKeyboardPaint();
+      if (!dragRef.current.active) {
+        setPressedCell(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [hoveredCell, isInteractionLocked, queuePrimaryTap, resetKeyboardPaint]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || isInteractionLocked || !hostRef.current) {
@@ -524,8 +644,8 @@ export default function GameBoard({
       return;
     }
 
-    hostRef.current.focus();
-    setFocusedCell(cell);
+    setHoveredCell(cell);
+    setPressedCell(cell);
     const state = useGameStore.getState();
     const [row, col] = cell;
     const hasQueen = state.queens.some(([queenRow, queenCol]) => queenRow === row && queenCol === col);
@@ -543,20 +663,59 @@ export default function GameBoard({
   }, [isInteractionLocked, size]);
 
   const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (
-      !dragRef.current.active ||
-      dragRef.current.pointerId !== event.pointerId ||
-      !dragRef.current.startCell ||
-      !dragRef.current.action ||
-      !hostRef.current
-    ) {
+    if (!hostRef.current) {
       return;
     }
 
     const cell = getCellFromPoint(hostRef.current, size, event.clientX, event.clientY);
-    if (!cell || sameCell(cell, dragRef.current.startCell)) {
+    setHoveredCell(cell);
+
+    if (keyboardPaintRef.current.isSpaceHeld) {
+      if (!cell) {
+        if (!dragRef.current.active) {
+          setPressedCell(null);
+        }
+      } else {
+        setPressedCell(cell);
+
+        const { startCell, action, visited } = keyboardPaintRef.current;
+        if (startCell && action && !sameCell(cell, startCell)) {
+          clearPendingClick();
+
+          const startKey = cellKey(startCell);
+          if (!visited.has(startKey)) {
+            commitDragCell(startCell, action);
+            visited.add(startKey);
+          }
+
+          const currentKey = cellKey(cell);
+          if (!visited.has(currentKey)) {
+            commitDragCell(cell, action);
+            visited.add(currentKey);
+          }
+        }
+      }
+    }
+
+    if (
+      !dragRef.current.active ||
+      dragRef.current.pointerId !== event.pointerId ||
+      !dragRef.current.startCell ||
+      !dragRef.current.action
+    ) {
       return;
     }
+
+    if (!cell) {
+      setPressedCell(null);
+      return;
+    }
+
+    if (sameCell(cell, dragRef.current.startCell)) {
+      return;
+    }
+
+    setPressedCell(cell);
 
     const startKey = cellKey(dragRef.current.startCell);
     if (!dragRef.current.visited.has(startKey)) {
@@ -571,8 +730,7 @@ export default function GameBoard({
 
     commitDragCell(cell, dragRef.current.action);
     dragRef.current.hasDragged = true;
-    setFocusedCell(cell);
-  }, [commitDragCell, size]);
+  }, [clearPendingClick, commitDragCell, size]);
 
   const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current.active || dragRef.current.pointerId !== event.pointerId || !hostRef.current) {
@@ -580,11 +738,15 @@ export default function GameBoard({
     }
 
     const fallbackCell = dragRef.current.startCell;
-    const cell = getCellFromPoint(hostRef.current, size, event.clientX, event.clientY) ?? fallbackCell;
+    const releasedCell = getCellFromPoint(hostRef.current, size, event.clientX, event.clientY);
+    const cell = releasedCell ?? fallbackCell;
 
     if (!dragRef.current.hasDragged && cell && !isInteractionLocked) {
       queuePrimaryTap(cell);
     }
+
+    setHoveredCell(releasedCell);
+    setPressedCell(null);
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -593,119 +755,40 @@ export default function GameBoard({
     resetDrag();
   }, [isInteractionLocked, queuePrimaryTap, resetDrag, size]);
 
-  const handleContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (isInteractionLocked || !hostRef.current) {
-      return;
-    }
-
-    const cell = getCellFromPoint(hostRef.current, size, event.clientX, event.clientY);
-    if (!cell) {
-      return;
-    }
-
-    const [row, col] = cell;
-    useGameStore.getState().removeCell(row, col);
-    setFocusedCell(cell);
-  }, [isInteractionLocked, size]);
-
-  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (isInteractionLocked) {
-      return;
-    }
-
-    const applySpaceActionToCell = (cell: CellCoord) => {
-      if (!spaceActionRef.current) {
-        return;
-      }
-
-      const [row, col] = cell;
-      useGameStore.getState().setCellState(row, col, spaceActionRef.current === "mark" ? "mark" : "empty");
-    };
-
-    switch (event.key) {
-      case "ArrowUp":
-      case "ArrowDown":
-      case "ArrowLeft":
-      case "ArrowRight": {
-        event.preventDefault();
-        const [row, col] = focusedCell;
-        const nextCell: CellCoord =
-          event.key === "ArrowUp"
-            ? [Math.max(0, row - 1), col]
-            : event.key === "ArrowDown"
-              ? [Math.min(size - 1, row + 1), col]
-              : event.key === "ArrowLeft"
-                ? [row, Math.max(0, col - 1)]
-                : [row, Math.min(size - 1, col + 1)];
-        setFocusedCell(nextCell);
-        applySpaceActionToCell(nextCell);
-        break;
-      }
-      case " ": {
-        event.preventDefault();
-        if (!event.repeat) {
-          const [row, col] = focusedCell;
-          const state = useGameStore.getState();
-          const action = toggleResult(row, col, state.queens, state.marks);
-          state.setCellState(row, col, action);
-          spaceActionRef.current = action;
-        }
-        break;
-      }
-      case "Enter": {
-        event.preventDefault();
-        if (!event.repeat) {
-          const [row, col] = focusedCell;
-          useGameStore.getState().setCellState(row, col, "queen");
-        }
-        break;
-      }
-    }
-  }, [focusedCell, isInteractionLocked, size]);
-
-  const handleKeyUp = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === " ") {
-      event.preventDefault();
-      spaceActionRef.current = null;
-    }
-  }, []);
-
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center" style={{ width: boardPixels || undefined, maxWidth: "100%" }}>
       <div
         ref={hostRef}
-        role="grid"
+        role="img"
         aria-label="Queens puzzle board"
-        aria-readonly={isInteractionLocked}
-        aria-describedby="board-status"
         data-testid="game-board"
         data-board-size={size}
-        tabIndex={0}
-        className="relative rounded-[12px] outline-none transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-white/30"
+        className="relative rounded-[16px] transition-shadow duration-200"
         style={{
           width: boardPixels || undefined,
           height: boardPixels || undefined,
-          boxShadow: isSolved ? "0 0 0 1px rgba(34,197,94,0.4), 0 0 32px rgba(34,197,94,0.18)" : "var(--glow-md)",
+          boxShadow: isSolved
+            ? "0 0 0 1px rgba(224, 166, 74, 0.42), 0 12px 28px rgba(0, 0, 0, 0.18)"
+            : "0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 28px rgba(0, 0, 0, 0.22)",
           touchAction: "none",
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerCancel={resetDrag}
-        onContextMenu={handleContextMenu}
-        onKeyDown={handleKeyDown}
-        onKeyUp={handleKeyUp}
+        onPointerLeave={() => setHoveredCell(null)}
+        onPointerCancel={() => {
+          setHoveredCell(null);
+          setPressedCell(null);
+          resetDrag();
+        }}
+        onContextMenu={(event) => event.preventDefault()}
       >
         <div
           ref={canvasRef}
-          className="h-full w-full overflow-hidden rounded-[12px]"
-          style={{ background: "var(--surface-01)", border: "1px solid var(--border-default)" }}
+          className="h-full w-full overflow-hidden rounded-[16px]"
+          style={{ background: "var(--board-shell)", border: "1px solid color-mix(in srgb, var(--board-frame) 65%, transparent)" }}
         />
       </div>
-      <p id="board-status" className="sr-only">
-        {focusStatus}
-      </p>
     </div>
   );
 }

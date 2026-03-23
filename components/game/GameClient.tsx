@@ -116,8 +116,11 @@ export function GameClient({
     if (!hintCell) return;
     const hintedKey = `${hintCell[0]},${hintCell[1]}`;
     if (queens.some(([row, col]) => `${row},${col}` === hintedKey)) {
-      setHintCell(null);
-      setHintMessage(null);
+      const clearHintId = window.setTimeout(() => {
+        setHintCell(null);
+        setHintMessage(null);
+      }, 0);
+      return () => window.clearTimeout(clearHintId);
     }
   }, [hintCell, queens]);
 
@@ -151,11 +154,11 @@ export function GameClient({
 
   return (
     <div
-      className="flex-1 flex flex-col md:flex-row items-start justify-center gap-6 md:gap-10 px-4 md:px-12"
+      className="mx-auto flex w-full max-w-[1220px] flex-1 flex-col items-stretch justify-center gap-8 px-4 py-8 md:flex-row md:items-start md:gap-12 md:px-8"
       style={{ paddingTop: "40px", paddingBottom: "40px", background: "var(--bg-void)" }}
     >
-      {/* Sidebar — left */}
-      <aside className="w-full md:w-52 md:shrink-0">
+      {/* Sidebar — secondary rail */}
+      <aside className="order-2 w-full md:order-1 md:w-[220px] md:shrink-0">
         <GameSidebar
           size={size}
           confirmReset={preferences.confirmReset}
@@ -165,9 +168,9 @@ export function GameClient({
         />
       </aside>
 
-      {/* Board area — blurred when paused */}
+      {/* Board area — primary focus */}
       <div
-        className={`flex justify-center transition-[filter] duration-200 ${
+        className={`order-1 flex min-w-0 flex-1 justify-center transition-[filter] duration-200 md:order-2 ${
           isPaused ? "blur-sm pointer-events-none select-none" : ""
         }`}
       >

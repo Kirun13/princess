@@ -97,6 +97,42 @@ describe("game store", () => {
     expect(useGameStore.getState().getActiveMs()).toBe(7_000);
   });
 
+  it("clears the board without restarting the timer", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    loadDefaultPuzzle();
+
+    useGameStore.getState().placeQueen(0, 0);
+    vi.advanceTimersByTime(5_000);
+
+    useGameStore.getState().reset();
+
+    expect(useGameStore.getState().queens).toHaveLength(0);
+    expect(useGameStore.getState().marks.size).toBe(0);
+    expect(useGameStore.getState().getActiveMs()).toBe(5_000);
+
+    vi.advanceTimersByTime(2_000);
+    expect(useGameStore.getState().getActiveMs()).toBe(7_000);
+  });
+
+  it("restarts the board with a fresh timer", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    loadDefaultPuzzle();
+
+    useGameStore.getState().placeQueen(0, 0);
+    vi.advanceTimersByTime(5_000);
+
+    useGameStore.getState().restart();
+
+    expect(useGameStore.getState().queens).toHaveLength(0);
+    expect(useGameStore.getState().marks.size).toBe(0);
+    expect(useGameStore.getState().getActiveMs()).toBe(0);
+
+    vi.advanceTimersByTime(2_000);
+    expect(useGameStore.getState().getActiveMs()).toBe(2_000);
+  });
+
   it("auto-resumes when how-to-play modal caused pause", () => {
     loadDefaultPuzzle();
 

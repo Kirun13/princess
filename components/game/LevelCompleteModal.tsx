@@ -195,7 +195,7 @@ export function LevelCompleteModal({
   const queens = useGameStore((s) => s.queens);
   const getActiveMs = useGameStore((s) => s.getActiveMs);
   const startToken = useGameStore((s) => s.startToken);
-  const reset = useGameStore((s) => s.reset);
+  const restart = useGameStore((s) => s.restart);
   const router = useRouter();
 
   const submittedRef = useRef(false);
@@ -605,7 +605,7 @@ export function LevelCompleteModal({
                         onClick={() => {
                           mutation.reset();
                           submittedRef.current = false;
-                          reset();
+                          restart();
                         }}
                         className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
                         style={{

@@ -56,6 +56,7 @@ type GameState = {
   pause: () => void;
   resume: () => void;
   reset: () => void;
+  restart: () => void;
   getActiveMs: () => number;
   openHowToPlay: () => void;
   closeHowToPlay: () => void;
@@ -157,7 +158,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set(deriveBoardView(grid, setCellFillState(board, { row, col }, state)));
   },
 
-  // right-click: remove queen or mark → empty
+  // clear queen or mark → empty
   removeCell(row, col) {
     const { grid, board } = get();
     if (!grid || !board) return;
@@ -187,6 +188,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   reset() {
+    const { grid } = get();
+    if (!grid) return;
+    const board = createBoardState(grid.length);
+    set({
+      ...deriveBoardView(grid, board),
+    });
+  },
+
+  restart() {
     const { grid } = get();
     if (!grid) return;
     const board = createBoardState(grid.length);
