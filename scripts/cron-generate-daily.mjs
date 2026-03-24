@@ -64,7 +64,22 @@ try {
         endpoint,
         error:
           error instanceof Error
-            ? { name: error.name, message: error.message }
+            ? {
+                name: error.name,
+                message: error.message,
+                cause:
+                  error.cause && typeof error.cause === "object"
+                    ? {
+                        name: error.cause.name,
+                        message: error.cause.message,
+                        code: error.cause.code,
+                        errno: error.cause.errno,
+                        syscall: error.cause.syscall,
+                        address: error.cause.address,
+                        port: error.cause.port,
+                      }
+                    : error.cause,
+              }
             : { message: String(error) },
       },
       null,
