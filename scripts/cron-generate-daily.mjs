@@ -11,7 +11,11 @@ if (!cronSecret) {
   process.exit(1);
 }
 
-const endpoint = new URL("/api/cron/generate-daily", appInternalUrl).toString();
+const normalizedAppInternalUrl = /^https?:\/\//i.test(appInternalUrl)
+  ? appInternalUrl
+  : `http://${appInternalUrl}`;
+
+const endpoint = new URL("/api/cron/generate-daily", normalizedAppInternalUrl).toString();
 
 try {
   const response = await fetch(endpoint, {
