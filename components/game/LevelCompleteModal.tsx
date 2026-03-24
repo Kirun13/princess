@@ -38,6 +38,7 @@ interface SolveResult {
 
 interface LevelCompleteModalProps {
   puzzleId: string;
+  puzzleNumber?: number | null;
   levelId?: string;
   dailyChallengeId?: string;
   nextLevelId?: string | null;
@@ -183,6 +184,7 @@ function UserRatingWidget({
 
 export function LevelCompleteModal({
   puzzleId,
+  puzzleNumber,
   levelId,
   dailyChallengeId,
   nextLevelId,
@@ -303,6 +305,18 @@ export function LevelCompleteModal({
                 >
                   Puzzle Solved!
                 </Dialog.Title>
+
+                {puzzleNumber != null && (
+                  <p
+                    className="mt-2 text-center text-sm font-semibold"
+                    style={{
+                      fontFamily: "var(--font-mono), monospace",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Puzzle #{puzzleNumber}
+                  </p>
+                )}
 
                 <div
                   data-testid="level-complete-layout"

@@ -84,6 +84,7 @@ export default async function DailyPlayPage() {
     <GameClient
       grid={challenge.puzzle.grid as Grid}
       puzzleId={challenge.puzzle.id}
+      puzzleNumber={challenge.number}
       startToken={startToken}
       dailyChallengeId={challenge.id}
       size={challenge.puzzle.size}

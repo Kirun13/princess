@@ -16,6 +16,12 @@ export type DailyChallengeSummary = {
   puzzleId: string;
 };
 
+function normalizeUtcDate(date: Date) {
+  const normalized = new Date(date);
+  normalized.setUTCHours(0, 0, 0, 0);
+  return normalized;
+}
+
 function getPuzzleGeneratorBaseUrl() {
   const generatorUrl = process.env.PUZZLE_GENERATOR_URL;
 
@@ -68,6 +74,10 @@ export async function resolveDailyChallengeState(now = new Date()) {
 
 export function getTomorrowUtcDate() {
   return getUtcDayWindow().tomorrowStartUtc;
+}
+
+export function getTodayUtcDate() {
+  return getUtcDayWindow().todayStartUtc;
 }
 
 export function sampleDailySize(): number {
@@ -157,10 +167,10 @@ export async function serializeTomorrowDailyChallenge() {
   };
 }
 
-export async function createTomorrowDailyChallengeIfMissing() {
-  const tomorrow = getTomorrowUtcDate();
+async function createDailyChallengeIfMissingForDate(targetDate: Date) {
+  const normalizedDate = normalizeUtcDate(targetDate);
   const existing = await db.dailyChallenge.findUnique({
-    where: { date: tomorrow },
+    where: { date: normalizedDate },
     include: {
       puzzle: {
         select: {
@@ -193,35 +203,68 @@ export async function createTomorrowDailyChallengeIfMissing() {
     throw new Error("Generated puzzle is already scheduled for another daily challenge");
   }
 
-  const last = await db.dailyChallenge.findFirst({
-    orderBy: { number: "desc" },
+  const previousChallenge = await db.dailyChallenge.findFirst({
+    where: { date: { lt: normalizedDate } },
+    orderBy: { date: "desc" },
     select: { number: true },
   });
 
-  const nextNumber = (last?.number ?? 0) + 1;
-  const daily = await db.dailyChallenge.create({
-    data: {
-      date: tomorrow,
-      number: nextNumber,
-      puzzleId: puzzle.id,
-    },
-    include: {
-      puzzle: {
-        select: {
-          id: true,
-          grid: true,
-          size: true,
-          difficulty: true,
-          hash: true,
+  const nextChallenge = await db.dailyChallenge.findFirst({
+    where: { date: { gt: normalizedDate } },
+    orderBy: { date: "asc" },
+    select: { number: true },
+  });
+
+  const insertNumber = previousChallenge?.number
+    ? previousChallenge.number + 1
+    : (nextChallenge?.number ?? 1);
+
+  const daily = await db.$transaction(async (tx) => {
+    const futureChallenges = await tx.dailyChallenge.findMany({
+      where: { number: { gte: insertNumber } },
+      orderBy: { number: "desc" },
+      select: { id: true, number: true },
+    });
+
+    for (const challenge of futureChallenges) {
+      await tx.dailyChallenge.update({
+        where: { id: challenge.id },
+        data: { number: challenge.number + 1 },
+      });
+    }
+
+    return tx.dailyChallenge.create({
+      data: {
+        date: normalizedDate,
+        number: insertNumber,
+        puzzleId: puzzle.id,
+      },
+      include: {
+        puzzle: {
+          select: {
+            id: true,
+            grid: true,
+            size: true,
+            difficulty: true,
+            hash: true,
+          },
         },
       },
-    },
+    });
   });
 
   return {
     created: true,
     challenge: daily,
   };
+}
+
+export async function createTodayDailyChallengeIfMissing() {
+  return createDailyChallengeIfMissingForDate(getTodayUtcDate());
+}
+
+export async function createTomorrowDailyChallengeIfMissing() {
+  return createDailyChallengeIfMissingForDate(getTomorrowUtcDate());
 }
 
 export async function regenerateTomorrowDailyChallenge() {

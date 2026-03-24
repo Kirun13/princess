@@ -4,11 +4,13 @@ const {
   requireAdminApiUserMock,
   serializeTomorrowDailyChallengeMock,
   createTomorrowDailyChallengeIfMissingMock,
+  createTodayDailyChallengeIfMissingMock,
   regenerateTomorrowDailyChallengeMock,
 } = vi.hoisted(() => ({
   requireAdminApiUserMock: vi.fn(),
   serializeTomorrowDailyChallengeMock: vi.fn(),
   createTomorrowDailyChallengeIfMissingMock: vi.fn(),
+  createTodayDailyChallengeIfMissingMock: vi.fn(),
   regenerateTomorrowDailyChallengeMock: vi.fn(),
 }));
 
@@ -19,10 +21,12 @@ vi.mock("@/lib/admin", () => ({
 vi.mock("@/lib/daily-challenge", () => ({
   serializeTomorrowDailyChallenge: serializeTomorrowDailyChallengeMock,
   createTomorrowDailyChallengeIfMissing: createTomorrowDailyChallengeIfMissingMock,
+  createTodayDailyChallengeIfMissing: createTodayDailyChallengeIfMissingMock,
   regenerateTomorrowDailyChallenge: regenerateTomorrowDailyChallengeMock,
 }));
 
 import { GET } from "@/app/api/admin/daily/next/route";
+import { POST as GENERATE_TODAY } from "@/app/api/admin/daily/today/generate/route";
 import { POST as GENERATE } from "@/app/api/admin/daily/next/generate/route";
 import { POST as REGENERATE } from "@/app/api/admin/daily/next/regenerate/route";
 
@@ -31,6 +35,7 @@ describe("admin daily preview routes", () => {
     requireAdminApiUserMock.mockReset();
     serializeTomorrowDailyChallengeMock.mockReset();
     createTomorrowDailyChallengeIfMissingMock.mockReset();
+    createTodayDailyChallengeIfMissingMock.mockReset();
     regenerateTomorrowDailyChallengeMock.mockReset();
   });
 
@@ -86,6 +91,43 @@ describe("admin daily preview routes", () => {
         size: 7,
         difficulty: "medium",
         grid: [[0]],
+      },
+    });
+  });
+
+  it("backfills today when missing", async () => {
+    requireAdminApiUserMock.mockResolvedValue({
+      ok: true,
+      user: { id: "admin-1", username: "queen", role: "ADMIN" },
+    });
+    createTodayDailyChallengeIfMissingMock.mockResolvedValue({
+      created: true,
+      challenge: {
+        id: "daily-today",
+        number: 1,
+        puzzle: {
+          id: "puzzle-today",
+          hash: "hash-today",
+          size: 8,
+          difficulty: "hard",
+          grid: [[1]],
+        },
+      },
+    });
+
+    const response = await GENERATE_TODAY();
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      created: true,
+      challenge: {
+        id: "daily-today",
+        number: 1,
+        puzzleId: "puzzle-today",
+        hash: "hash-today",
+        size: 8,
+        difficulty: "hard",
+        grid: [[1]],
       },
     });
   });

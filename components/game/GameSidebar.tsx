@@ -7,6 +7,7 @@ import { HowToPlayModal } from "@/components/game/HowToPlayModal";
 
 interface GameSidebarProps {
   size: number;
+  puzzleNumber?: number | null;
   confirmReset?: boolean;
   showTimer?: boolean;
   onRequestHint?: () => void;
@@ -21,6 +22,7 @@ function formatTime(ms: number): string {
 
 export function GameSidebar({
   size,
+  puzzleNumber,
   confirmReset = false,
   showTimer = true,
   onRequestHint,
@@ -67,6 +69,20 @@ export function GameSidebar({
 
   return (
     <div className="flex flex-col gap-2 w-full">
+      {puzzleNumber != null && (
+        <div
+          className="rounded-[10px] p-3 text-center"
+          style={{ background: "var(--surface-01)", border: "1px solid var(--border-subtle)" }}
+        >
+          <p className="text-[10px] uppercase tracking-[2px] mb-1" style={{ ...mono, color: "var(--text-muted)" }}>
+            Puzzle
+          </p>
+          <p className="text-lg font-bold tabular-nums" style={{ ...mono, color: "var(--text-primary)" }}>
+            #{puzzleNumber}
+          </p>
+        </div>
+      )}
+
       {/* Back to Levels */}
       <Link
         href="/levels"

@@ -81,6 +81,7 @@ export default async function LevelPlayPage({ params }: PageProps) {
     <GameClient
       grid={level.puzzle.grid as Grid}
       puzzleId={level.puzzle.id}
+      puzzleNumber={level.number}
       startToken={startToken}
       levelId={level.id}
       nextLevelId={nextLevel?.id ?? null}

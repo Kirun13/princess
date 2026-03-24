@@ -18,6 +18,7 @@ type GamePreferences = Pick<
 interface GameClientProps {
   grid: Grid;
   puzzleId: string;
+  puzzleNumber?: number | null;
   startToken: string | null;
   levelId?: string;
   dailyChallengeId?: string;
@@ -34,6 +35,7 @@ interface GameClientProps {
 export function GameClient({
   grid,
   puzzleId,
+  puzzleNumber,
   startToken,
   levelId,
   dailyChallengeId,
@@ -161,6 +163,7 @@ export function GameClient({
       <aside className="order-2 w-full md:order-1 md:w-[220px] md:shrink-0">
         <GameSidebar
           size={size}
+          puzzleNumber={puzzleNumber}
           confirmReset={preferences.confirmReset}
           showTimer={preferences.showTimer}
           onRequestHint={handleHintRequest}
@@ -187,6 +190,7 @@ export function GameClient({
       <PauseModal />
       <LevelCompleteModal
         puzzleId={puzzleId}
+        puzzleNumber={puzzleNumber}
         levelId={levelId}
         dailyChallengeId={dailyChallengeId}
         nextLevelId={nextLevelId}
