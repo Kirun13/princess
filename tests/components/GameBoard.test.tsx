@@ -125,6 +125,34 @@ describe("GameBoard", () => {
     await waitFor(() => expect(pixiApps[0].stage.children.length).toBeGreaterThan(0));
   });
 
+  it("prevents native drag behavior on the board surface", async () => {
+    render(
+      <GameBoard
+        grid={[
+          [0, 1],
+          [1, 0],
+        ]}
+        puzzleId="puzzle-1"
+        startToken="token-1"
+        highlightConflicts
+      />,
+    );
+
+    const board = await screen.findByTestId("game-board");
+    const canvas = await waitFor(() => {
+      const node = document.querySelector("canvas");
+      expect(node).toBeInstanceOf(HTMLCanvasElement);
+      return node as HTMLCanvasElement;
+    });
+
+    const dragStartEvent = new Event("dragstart", { bubbles: true, cancelable: true });
+    canvas.dispatchEvent(dragStartEvent);
+
+    expect(board).toHaveAttribute("draggable", "false");
+    expect(canvas.draggable).toBe(false);
+    expect(dragStartEvent.defaultPrevented).toBe(true);
+  });
+
   it("renders the board without legacy focus helper copy", async () => {
     render(
       <GameBoard

@@ -497,6 +497,8 @@ export default function GameBoard({
 
     let disposed = false;
     const canvasNode = canvasRef.current;
+    let nativeCanvas: HTMLCanvasElement | null = null;
+    const preventNativeDrag = (event: DragEvent) => event.preventDefault();
 
     async function initPixi() {
       await import("pixi.js/unsafe-eval");
@@ -523,9 +525,14 @@ export default function GameBoard({
       pixiModuleRef.current = pixi;
       pixiAppRef.current = app;
       app.canvas.setAttribute("aria-hidden", "true");
+      app.canvas.draggable = false;
       app.canvas.style.display = "block";
       app.canvas.style.width = "100%";
       app.canvas.style.height = "100%";
+      app.canvas.style.userSelect = "none";
+      app.canvas.style.touchAction = "none";
+      app.canvas.addEventListener("dragstart", preventNativeDrag);
+      nativeCanvas = app.canvas;
       canvasNode.replaceChildren(app.canvas);
       setPixiReadyNonce((current) => current + 1);
     }
@@ -542,6 +549,7 @@ export default function GameBoard({
         destroyChildren(app);
         app.destroy(true, { children: true });
       }
+      nativeCanvas?.removeEventListener("dragstart", preventNativeDrag);
       canvasNode.replaceChildren();
     };
   }, [boardPixels, clearPendingClick]);
@@ -763,6 +771,7 @@ export default function GameBoard({
         aria-label="Queens puzzle board"
         data-testid="game-board"
         data-board-size={size}
+        draggable={false}
         className="relative rounded-[16px] transition-shadow duration-200"
         style={{
           width: boardPixels || undefined,
@@ -771,6 +780,8 @@ export default function GameBoard({
             ? "0 0 0 1px rgba(224, 166, 74, 0.42), 0 12px 28px rgba(0, 0, 0, 0.18)"
             : "0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 28px rgba(0, 0, 0, 0.22)",
           touchAction: "none",
+          userSelect: "none",
+          WebkitUserDrag: "none",
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -781,12 +792,15 @@ export default function GameBoard({
           setPressedCell(null);
           resetDrag();
         }}
+        onDragStart={(event) => event.preventDefault()}
         onContextMenu={(event) => event.preventDefault()}
       >
         <div
           ref={canvasRef}
+          draggable={false}
           className="h-full w-full overflow-hidden rounded-[16px]"
           style={{ background: "var(--board-shell)", border: "1px solid color-mix(in srgb, var(--board-frame) 65%, transparent)" }}
+          onDragStart={(event) => event.preventDefault()}
         />
       </div>
     </div>
