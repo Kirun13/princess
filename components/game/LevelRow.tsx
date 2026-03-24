@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { formatTime } from "@/lib/format";
 import type { LevelWithSolve } from "./LevelCard";
-import { getLevelDescriptor } from "@/lib/level-meta";
 
 const DIFFICULTY_STYLES: Record<string, { color: string; bg: string; border: string }> = {
   easy:   { color: "#22C55E", bg: "#22C55E20", border: "#22C55E50" },
@@ -18,7 +17,6 @@ export default function LevelRow({ level }: Props) {
     bg: "#7C3AED20",
     border: "#7C3AED50",
   };
-  const descriptor = getLevelDescriptor(level);
 
   return (
     <Link
@@ -49,16 +47,6 @@ export default function LevelRow({ level }: Props) {
         style={{ fontFamily: "var(--font-mono), monospace", color: "var(--text-primary)" }}
       >
         {level.name}
-      </span>
-
-      <span
-        className="text-[11px] flex-shrink-0 hidden xl:inline-block"
-        style={{
-          color: "var(--text-muted)",
-          fontFamily: "var(--app-ui-font), Inter, system-ui, sans-serif",
-        }}
-      >
-        {descriptor.label}
       </span>
 
       {/* Difficulty badge */}
