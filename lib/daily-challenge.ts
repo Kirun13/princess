@@ -16,6 +16,16 @@ export type DailyChallengeSummary = {
   puzzleId: string;
 };
 
+function getPuzzleGeneratorBaseUrl() {
+  const generatorUrl = process.env.PUZZLE_GENERATOR_URL;
+
+  if (!generatorUrl) {
+    throw new Error("PUZZLE_GENERATOR_URL is not configured");
+  }
+
+  return /^https?:\/\//i.test(generatorUrl) ? generatorUrl : `http://${generatorUrl}`;
+}
+
 export async function resolveDailyChallengeState(now = new Date()) {
   const { todayStartUtc, todayEndUtc, tomorrowStartUtc } = getUtcDayWindow(now);
 
@@ -71,7 +81,7 @@ export function sampleDailySize(): number {
 }
 
 export async function requestGeneratedPuzzle() {
-  const res = await fetch(`${process.env.PUZZLE_GENERATOR_URL}/generate`, {
+  const res = await fetch(`${getPuzzleGeneratorBaseUrl()}/generate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
