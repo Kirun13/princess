@@ -781,7 +781,6 @@ export default function GameBoard({
             : "0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 28px rgba(0, 0, 0, 0.22)",
           touchAction: "none",
           userSelect: "none",
-          WebkitUserDrag: "none",
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
