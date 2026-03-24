@@ -1,10 +1,22 @@
 import { create } from "zustand";
 import {
+  boardToMarks,
+  boardToQueens,
+  clearCell,
+  createBoardState,
+  setCellFillState,
+  setQueen,
+} from "@/lib/game-engine/boardState";
+import {
+  conflictMapToSet,
+  createPuzzleDefinition,
+  validateBoard,
+} from "@/lib/game-engine/validation";
+import type { BoardState, ValidationResult } from "@/lib/game-engine/types";
+import {
   type Grid,
   type Queens,
   type ConflictSet,
-  getConflicts,
-  isSolved as checkSolved,
 } from "@/lib/puzzle/validator";
 
 type GameState = {
@@ -12,6 +24,8 @@ type GameState = {
   grid: Grid | null;
   size: number;
   puzzleId: string | null;
+  board: BoardState | null;
+  validation: ValidationResult | null;
 
   // Queens & marks
   queens: Queens;
@@ -42,17 +56,24 @@ type GameState = {
   pause: () => void;
   resume: () => void;
   reset: () => void;
+  restart: () => void;
   getActiveMs: () => number;
   openHowToPlay: () => void;
   closeHowToPlay: () => void;
 };
 
-function recompute(
-  grid: Grid,
-  queens: Queens
-): { conflicts: ConflictSet; isSolved: boolean } {
-  const conflicts = getConflicts(grid, queens);
-  return { conflicts, isSolved: checkSolved(grid, queens) };
+function deriveBoardView(grid: Grid, board: BoardState) {
+  const validation = validateBoard(createPuzzleDefinition(grid), board);
+
+  return {
+    size: grid.length,
+    board,
+    validation,
+    queens: boardToQueens(board),
+    marks: boardToMarks(board),
+    conflicts: conflictMapToSet(validation.conflictsByCell),
+    isSolved: validation.isSolved,
+  };
 }
 
 // Tracks whether openHowToPlay() caused the pause (so closeHowToPlay can auto-resume)
@@ -62,6 +83,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   grid: null,
   size: 0,
   puzzleId: null,
+  board: null,
+  validation: null,
 
   queens: [],
   conflicts: new Set(),
@@ -77,42 +100,35 @@ export const useGameStore = create<GameState>((set, get) => ({
   isHowToPlayOpen: false,
 
   loadPuzzle(grid, puzzleId, startToken) {
+    const board = createBoardState(grid.length);
     set({
       grid,
-      size: grid.length,
       puzzleId,
       startToken,
-      queens: [],
-      conflicts: new Set(),
-      marks: new Set<string>(),
-      isSolved: false,
       isHowToPlayOpen: false,
       startedAt: Date.now(),
       activeMs: 0,
       isPaused: false,
       pausedAt: null,
+      ...deriveBoardView(grid, board),
     });
   },
 
   placeQueen(row, col) {
-    const { grid, queens } = get();
-    if (!grid) return;
-    const already = queens.some(([r, c]) => r === row && c === col);
-    if (already) return;
-    const next: Queens = [...queens, [row, col]];
-    set({ queens: next, ...recompute(grid, next) });
+    const { grid, board } = get();
+    if (!grid || !board) return;
+    set(deriveBoardView(grid, setQueen(board, { row, col }, true)));
   },
 
   removeQueen(row, col) {
-    const { grid, queens } = get();
-    if (!grid) return;
-    const next: Queens = queens.filter(([r, c]) => !(r === row && c === col));
-    set({ queens: next, ...recompute(grid, next) });
+    const { grid, board } = get();
+    if (!grid || !board) return;
+    set(deriveBoardView(grid, setQueen(board, { row, col }, false)));
   },
 
   toggleQueen(row, col) {
     const { queens } = get();
-    const exists = queens.some(([r, c]) => r === row && c === col);
+    const exists = queens.some(([queenRow, queenCol]) => queenRow === row && queenCol === col);
     if (exists) {
       get().removeQueen(row, col);
     } else {
@@ -122,83 +138,31 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   // empty → mark → queen → empty
   cycleCell(row, col) {
-    const { grid, queens, marks, isSolved } = get();
-    if (!grid || isSolved) return;
+    const { grid, board, queens, marks, isSolved } = get();
+    if (!grid || !board || isSolved) return;
     const key = `${row},${col}`;
     const hasQueen = queens.some(([r, c]) => r === row && c === col);
     if (hasQueen) {
-      // queen → empty
-      const next: Queens = queens.filter(([r, c]) => !(r === row && c === col));
-      set({ queens: next, ...recompute(grid, next) });
+      set(deriveBoardView(grid, clearCell(board, { row, col })));
     } else if (marks.has(key)) {
-      // mark → queen
-      const nextMarks = new Set(marks);
-      nextMarks.delete(key);
-      const next: Queens = [...queens, [row, col]];
-      set({ marks: nextMarks, queens: next, ...recompute(grid, next) });
+      set(deriveBoardView(grid, setCellFillState(board, { row, col }, "queen")));
     } else {
-      // empty → mark
-      const nextMarks = new Set(marks);
-      nextMarks.add(key);
-      set({ marks: nextMarks });
+      set(deriveBoardView(grid, setCellFillState(board, { row, col }, "mark")));
     }
   },
 
   // Directly set cell to a specific state (used for drag-painting)
   setCellState(row, col, state) {
-    const { grid, queens, marks, isSolved } = get();
-    if (!grid || isSolved) return;
-    const key = `${row},${col}`;
-    const hasQueen = queens.some(([r, c]) => r === row && c === col);
-    if (state === "empty") {
-      if (hasQueen) {
-        const next: Queens = queens.filter(([r, c]) => !(r === row && c === col));
-        const nextMarks = new Set(marks);
-        nextMarks.delete(key);
-        set({ queens: next, marks: nextMarks, ...recompute(grid, next) });
-      } else if (marks.has(key)) {
-        const nextMarks = new Set(marks);
-        nextMarks.delete(key);
-        set({ marks: nextMarks });
-      }
-    } else if (state === "mark") {
-      const nextQueens = hasQueen
-        ? queens.filter(([r, c]) => !(r === row && c === col))
-        : queens;
-      const nextMarks = new Set(marks);
-      nextMarks.add(key);
-      if (hasQueen) {
-        set({ queens: nextQueens, marks: nextMarks, ...recompute(grid, nextQueens) });
-      } else {
-        set({ marks: nextMarks });
-      }
-    } else {
-      // queen
-      const nextMarks = new Set(marks);
-      nextMarks.delete(key);
-      if (!hasQueen) {
-        const next: Queens = [...queens, [row, col]];
-        set({ marks: nextMarks, queens: next, ...recompute(grid, next) });
-      } else {
-        set({ marks: nextMarks });
-      }
-    }
+    const { grid, board, isSolved } = get();
+    if (!grid || !board || isSolved) return;
+    set(deriveBoardView(grid, setCellFillState(board, { row, col }, state)));
   },
 
-  // right-click: remove queen or mark → empty
+  // clear queen or mark → empty
   removeCell(row, col) {
-    const { grid, queens, marks } = get();
-    if (!grid) return;
-    const key = `${row},${col}`;
-    const hasQueen = queens.some(([r, c]) => r === row && c === col);
-    if (hasQueen) {
-      const next: Queens = queens.filter(([r, c]) => !(r === row && c === col));
-      set({ queens: next, ...recompute(grid, next) });
-    } else if (marks.has(key)) {
-      const nextMarks = new Set(marks);
-      nextMarks.delete(key);
-      set({ marks: nextMarks });
-    }
+    const { grid, board } = get();
+    if (!grid || !board) return;
+    set(deriveBoardView(grid, clearCell(board, { row, col })));
   },
 
   pause() {
@@ -226,15 +190,22 @@ export const useGameStore = create<GameState>((set, get) => ({
   reset() {
     const { grid } = get();
     if (!grid) return;
+    const board = createBoardState(grid.length);
     set({
-      queens: [],
-      conflicts: new Set(),
-      marks: new Set<string>(),
-      isSolved: false,
+      ...deriveBoardView(grid, board),
+    });
+  },
+
+  restart() {
+    const { grid } = get();
+    if (!grid) return;
+    const board = createBoardState(grid.length);
+    set({
       startedAt: Date.now(),
       activeMs: 0,
       isPaused: false,
       pausedAt: null,
+      ...deriveBoardView(grid, board),
     });
   },
 

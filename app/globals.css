@@ -46,6 +46,19 @@
   --region-orange: #E67E22;
   --region-pink:   #E91E8C;
 
+  /* ── Board Tokens ─────────────────────────────── */
+  --board-shell:         #19171d;
+  --board-surface:       #121116;
+  --board-frame:         #4f4856;
+  --board-grid:          #2d2833;
+  --board-region-border: #817888;
+  --board-queen:         #F3E7D1;
+  --board-mark:          #938A9B;
+  --board-focus:         #EEE8F4;
+  --board-focus-guide:   #BEB7C7;
+  --board-hint:          #E0A64A;
+  --board-conflict:      #D77468;
+
   /* ── Legacy compat (keeps existing Tailwind classes working) ── */
   --bg:          #0D0D12;
   --bg-card:     #141420;
@@ -93,6 +106,18 @@
   --error:         #EF4444;
   --accent:        #7C3AED;
   --accent-hover:  #6d28d9;
+
+  --board-shell:         #F4EFE7;
+  --board-surface:       #FFFCF7;
+  --board-frame:         #C1B7A8;
+  --board-grid:          #E2DACE;
+  --board-region-border: #8E8274;
+  --board-queen:         #3F3224;
+  --board-mark:          #8E8378;
+  --board-focus:         #4A3E34;
+  --board-focus-guide:   #A89987;
+  --board-hint:          #B77A19;
+  --board-conflict:      #B75A49;
 
   --glow-xl:   0px 0px 60px rgba(124,58,237,.12), 0px 20px 60px rgba(0,0,0,.08);
   --glow-lg:   0px 0px 18px rgba(124,58,237,.18);

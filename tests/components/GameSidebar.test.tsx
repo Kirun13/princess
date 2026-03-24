@@ -29,6 +29,8 @@ describe("GameSidebar", () => {
       grid: null,
       size: 0,
       puzzleId: null,
+      board: null,
+      validation: null,
       queens: [],
       conflicts: new Set(),
       marks: new Set<string>(),

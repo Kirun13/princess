@@ -11,9 +11,10 @@ const RULES = [
 ];
 
 const CONTROLS = [
-  { input: "Click a cell", action: "Place or remove a queen" },
-  { input: "Arrow keys", action: "Move the keyboard cursor" },
-  { input: "Space / Enter", action: "Toggle a queen on the focused cell" },
+  { input: "Click / Space", action: "Place or remove mark" },
+  { input: "Double-click / Double Space", action: "Place a queen" },
+  { input: "Click / Space on queen", action: "Remove queen" },
+  { input: "Drag / Hold Space + Move", action: "Paint or erase marks" },
   { input: "P or Escape", action: "Pause / resume the timer" },
 ];
 

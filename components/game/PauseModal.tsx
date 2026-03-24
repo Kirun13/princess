@@ -9,7 +9,7 @@ export function PauseModal() {
   const isPaused = useGameStore((s) => s.isPaused);
   const isHowToPlayOpen = useGameStore((s) => s.isHowToPlayOpen);
   const resume = useGameStore((s) => s.resume);
-  const reset = useGameStore((s) => s.reset);
+  const restart = useGameStore((s) => s.restart);
   const router = useRouter();
 
   // Don't show pause modal when the HowToPlay overlay is responsible for the pause
@@ -87,7 +87,7 @@ export function PauseModal() {
                         ▶&nbsp;&nbsp;Resume
                       </button>
                       <button
-                        onClick={() => { reset(); resume(); }}
+                        onClick={restart}
                         className="w-full py-3 rounded-[8px] text-sm font-bold transition-all duration-150"
                         style={{
                           fontFamily: "var(--font-mono), monospace",

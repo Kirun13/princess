@@ -16,14 +16,11 @@ const RULES = [
 ];
 
 const CONTROLS: [string, string][] = [
-  ["Click", "Toggle mark (empty ↔ ×)"],
-  ["Double-click", "Place queen (♛)"],
-  ["Drag", "Paint / erase marks"],
-  ["Right-click", "Remove queen or mark"],
+  ["Click / Space", "Place or remove mark"],
+  ["Double-click / Double Space", "Place queen (♛)"],
+  ["Click / Space on queen", "Remove queen"],
+  ["Drag / Hold Space + Move", "Paint or erase marks"],
   ["Hint", "Highlight one correct queen location"],
-  ["Space", "Toggle mark on focused cell"],
-  ["Space + ↑↓←→", "Paint marks while navigating"],
-  ["Enter", "Place queen on focused cell"],
   ["R", "Reset board"],
   ["P", "Pause / resume"],
   ["Esc", "Back to levels"],

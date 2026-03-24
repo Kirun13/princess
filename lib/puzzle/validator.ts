@@ -1,4 +1,8 @@
-export type Grid = number[][];
+import { createBoardState, setQueen } from "@/lib/game-engine/boardState";
+import { conflictMapToSet, createPuzzleDefinition, validateBoard } from "@/lib/game-engine/validation";
+import type { RegionGrid } from "@/lib/game-engine/types";
+
+export type Grid = RegionGrid;
 export type Queens = [number, number][];
 export type ConflictSet = Set<string>;
 
@@ -7,61 +11,49 @@ function key(r: number, c: number): string {
 }
 
 export function getConflicts(grid: Grid, queens: Queens): ConflictSet {
-  const conflicts: ConflictSet = new Set();
-
-  for (let i = 0; i < queens.length; i++) {
-    for (let j = i + 1; j < queens.length; j++) {
-      const [r1, c1] = queens[i];
-      const [r2, c2] = queens[j];
-
-      const rowConflict = r1 === r2;
-      const colConflict = c1 === c2;
-      const regionConflict = grid[r1][c1] === grid[r2][c2];
-      const adjacentConflict =
-        Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1;
-
-      if (rowConflict || colConflict || regionConflict || adjacentConflict) {
-        conflicts.add(key(r1, c1));
-        conflicts.add(key(r2, c2));
-      }
-    }
-  }
-
-  return conflicts;
+  const board = boardFromQueens(grid, queens);
+  const validation = validateBoard(createPuzzleDefinition(grid), board);
+  return conflictMapToSet(validation.conflictsByCell);
 }
 
 export function isSolved(grid: Grid, queens: Queens): boolean {
-  const n = grid.length;
-  if (queens.length !== n) return false;
-  return getConflicts(grid, queens).size === 0;
+  const board = boardFromQueens(grid, queens);
+  return validateBoard(createPuzzleDefinition(grid), board).isSolved;
 }
 
 export function getThreatenedCells(
   grid: Grid,
   queens: Queens,
   row: number,
-  col: number
+  col: number,
 ): ConflictSet {
   const threatened: ConflictSet = new Set();
   const region = grid[row][col];
-  const n = grid.length;
+  const size = grid.length;
 
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      if (r === row && c === col) continue;
-      const sameRow = r === row;
-      const sameCol = c === col;
-      const sameRegion = grid[r][c] === region;
-      const adjacent = Math.abs(r - row) <= 1 && Math.abs(c - col) <= 1;
+  for (let currentRow = 0; currentRow < size; currentRow += 1) {
+    for (let currentCol = 0; currentCol < size; currentCol += 1) {
+      if (currentRow === row && currentCol === col) {
+        continue;
+      }
 
-      if (sameRow || sameCol || sameRegion || adjacent) {
-        // Only mark cells that have a queen placed there
-        if (queens.some(([qr, qc]) => qr === r && qc === c)) {
-          threatened.add(key(r, c));
-        }
+      const sameRow = currentRow === row;
+      const sameCol = currentCol === col;
+      const sameRegion = grid[currentRow][currentCol] === region;
+      const adjacent = Math.abs(currentRow - row) <= 1 && Math.abs(currentCol - col) <= 1;
+
+      if (
+        (sameRow || sameCol || sameRegion || adjacent) &&
+        queens.some(([queenRow, queenCol]) => queenRow === currentRow && queenCol === currentCol)
+      ) {
+        threatened.add(key(currentRow, currentCol));
       }
     }
   }
 
   return threatened;
+}
+
+function boardFromQueens(grid: Grid, queens: Queens) {
+  return queens.reduce((board, [row, col]) => setQueen(board, { row, col }, true), createBoardState(grid.length));
 }
