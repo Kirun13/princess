@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminSectionNav } from "@/components/admin/AdminSectionNav";
 import { ReadOnlyGrid } from "@/components/game/ReadOnlyGrid";
@@ -48,6 +48,7 @@ type RowDraft = {
 const STATUS_OPTIONS = ["all", "PUBLISHED", "DRAFT"] as const;
 const DIFFICULTY_OPTIONS = ["all", "easy", "medium", "hard", "expert"] as const;
 const SIZE_OPTIONS = ["all", "5", "6", "7", "8", "9", "10"] as const;
+const EMPTY_LEVELS: AdminLevel[] = [];
 
 export function LevelsAdminClient() {
   const queryClient = useQueryClient();
@@ -79,37 +80,38 @@ export function LevelsAdminClient() {
     },
   });
 
-  useEffect(() => {
-    if (!data?.levels) return;
-    setDrafts(
-      Object.fromEntries(
-        data.levels.map((level) => [
-          level.id,
-          {
-            number: String(level.number),
-            name: level.name,
-            sortOrder: String(level.sortOrder),
-            status: level.status,
-          },
-        ])
-      )
-    );
-    if (!previewLevelId || !data.levels.some((level) => level.id === previewLevelId)) {
-      setPreviewLevelId(data.levels[0]?.id ?? null);
-    }
-  }, [data, previewLevelId]);
+  const levels = data?.levels ?? EMPTY_LEVELS;
+  const selectedPreviewLevelId =
+    previewLevelId && levels.some((level) => level.id === previewLevelId)
+      ? previewLevelId
+      : levels[0]?.id ?? null;
+  const previewLevel =
+    levels.find((level) => level.id === selectedPreviewLevelId) ?? null;
+  const stats = {
+    total: levels.length,
+    published: levels.filter((level) => level.status === "PUBLISHED").length,
+    draft: levels.filter((level) => level.status === "DRAFT").length,
+    deleted: levels.filter((level) => level.deletedAt).length,
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (levelId: string) => {
       const draft = drafts[levelId];
+      const level = levels.find((item) => item.id === levelId);
+      if (!level) {
+        throw new Error("Level not found");
+      }
       const res = await fetch(`/api/admin/levels/${levelId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          number: Number.parseInt(draft.number, 10),
-          name: draft.name,
-          sortOrder: Number.parseInt(draft.sortOrder, 10),
-          status: draft.status,
+          number: Number.parseInt(draft?.number ?? String(level.number), 10),
+          name: draft?.name ?? level.name,
+          sortOrder: Number.parseInt(
+            draft?.sortOrder ?? String(level.sortOrder),
+            10
+          ),
+          status: draft?.status ?? level.status,
         }),
       });
       if (!res.ok) {
@@ -157,18 +159,6 @@ export function LevelsAdminClient() {
       setUploadError(error instanceof Error ? error.message : "Upload failed");
     },
   });
-
-  const levels = data?.levels ?? [];
-  const previewLevel = levels.find((level) => level.id === previewLevelId) ?? null;
-  const stats = useMemo(
-    () => ({
-      total: levels.length,
-      published: levels.filter((level) => level.status === "PUBLISHED").length,
-      draft: levels.filter((level) => level.status === "DRAFT").length,
-      deleted: levels.filter((level) => level.deletedAt).length,
-    }),
-    [levels]
-  );
 
   function updateDraft(levelId: string, patch: Partial<RowDraft>) {
     setDrafts((current) => ({
@@ -365,7 +355,10 @@ export function LevelsAdminClient() {
                         className="border-b transition-colors"
                         style={{
                           borderColor: "var(--border-subtle)",
-                          background: previewLevelId === level.id ? "rgba(139,92,246,0.08)" : "transparent",
+                          background:
+                            selectedPreviewLevelId === level.id
+                              ? "rgba(139,92,246,0.08)"
+                              : "transparent",
                           opacity: level.deletedAt ? 0.56 : 1,
                         }}
                       >

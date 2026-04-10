@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import puzzles from "../../manypuzzles.json";
 
 const appErrorText = /application error: a server-side exception has occurred/i;
+const seededLevelOne = puzzles[0];
 
 async function isServerErrorPage(page: Page) {
   const heading = page.getByRole("heading", { name: appErrorText });
@@ -61,7 +63,10 @@ test.describe("gameplay-adjacent journeys", () => {
 
     const board = page.getByTestId("game-board");
     await expect(board).toBeVisible();
-    await expect(board).toHaveAttribute("data-board-size", "4");
+    await expect(board).toHaveAttribute(
+      "data-board-size",
+      String(seededLevelOne.size)
+    );
 
     await page.getByRole("button", { name: /pause/i }).click();
     await expect(page.getByRole("button", { name: /resume/i })).toBeVisible();
@@ -73,13 +78,8 @@ test.describe("gameplay-adjacent journeys", () => {
       return;
     }
 
-    const cellSize = box.width / 4;
-    const solution: Array<[number, number]> = [
-      [0, 1],
-      [1, 3],
-      [2, 0],
-      [3, 2],
-    ];
+    const cellSize = box.width / seededLevelOne.size;
+    const solution = seededLevelOne.solution as Array<[number, number]>;
 
     for (const [row, col] of solution) {
       await board.dblclick({
