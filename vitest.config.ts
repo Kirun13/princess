@@ -13,6 +13,12 @@ export default defineConfig({
       reporter: ["text", "html"],
       include: ["lib/**/*.ts", "components/**/*.tsx", "app/**/*.ts"],
       exclude: ["tests/**", "**/*.d.ts", "next-env.d.ts"],
+      thresholds: {
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
+      },
     },
   },
 });

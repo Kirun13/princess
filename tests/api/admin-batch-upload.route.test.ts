@@ -148,4 +148,62 @@ describe("POST /api/admin/levels/batch-upload", () => {
       },
     });
   });
+
+  it("moves malformed items to failed and writes zero DB rows for them (TC10)", async () => {
+    requireAdminApiUserMock.mockResolvedValue({
+      ok: true,
+      user: { id: "admin-1", username: "queen", role: "ADMIN" },
+    });
+    getNextLevelNumberMock.mockResolvedValue(5);
+    getNextSortOrderMock.mockResolvedValue(5);
+    // Valid item: no existing puzzle
+    puzzleFindUniqueMock.mockResolvedValue(null);
+    puzzleCreateMock.mockResolvedValue({ id: "puzzle-valid" });
+    levelCreateMock.mockResolvedValue({
+      id: "level-valid",
+      number: 5,
+      sortOrder: 5,
+      name: "Level 5",
+    });
+
+    const response = await POST(
+      makeRequest([
+        // valid item
+        {
+          grid: [[0]],
+          solution: [[0]],
+          hash: "hash-valid",
+          size: 1,
+          difficulty: "easy",
+        },
+        // malformed: size is a string, not a number — fails BatchPuzzleSchema
+        {
+          grid: [[0]],
+          solution: [[0]],
+          hash: "hash-bad",
+          size: "not-a-number",
+          difficulty: "easy",
+        },
+      ])
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+
+    // The valid item was created
+    expect(body.created).toHaveLength(1);
+    expect(body.created[0].index).toBe(0);
+
+    // The malformed item landed in failed, not created or skipped
+    expect(body.failed).toHaveLength(1);
+    expect(body.failed[0].index).toBe(1);
+    expect(body.failed[0].reason).toBeDefined();
+
+    expect(body.skipped).toHaveLength(0);
+    expect(body.summary).toEqual({ total: 2, created: 1, skipped: 0, failed: 1 });
+
+    // puzzleCreate was called exactly once — only for the valid item
+    expect(puzzleCreateMock).toHaveBeenCalledTimes(1);
+    expect(levelCreateMock).toHaveBeenCalledTimes(1);
+  });
 });

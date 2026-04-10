@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  ci: 
+  ci:
     runs-on: ubuntu-latest
 
     env:
@@ -42,11 +42,30 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      # QG05 — zero ESLint errors must be present before tests run
+      - name: Lint
+        run: npm run lint
+
+      # QG06 — zero TypeScript type errors
       - name: Type Check
         run: npx tsc --noEmit
 
+      # P0 regression gate — run all Vitest suites, fail on any test error
       - name: Unit and integration tests
         run: npm run test
+
+      # QG01 — re-run with coverage; CI fails if any threshold is below 80%
+      - name: Coverage gate
+        run: npm run test:coverage
+        continue-on-error: false
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
 
       - name: Build
         run: npm run build
@@ -54,12 +73,78 @@ jobs:
       - name: Docker build smoke check
         run: docker build -t princess-web-ci .
 
-      
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":x: CI failed on *${{ github.ref_name }}* — job `ci`\nCommit: ${{ github.sha }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View job log>"
+            }
 
-      
+  # QG03 — E2E runs in a parallel job so unit feedback is not blocked
+  e2e:
+    runs-on: ubuntu-latest
+    needs: ci
 
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      START_TOKEN_SECRET: ${{ secrets.START_TOKEN_SECRET }}
+      PUZZLE_GENERATOR_URL: ${{ secrets.PUZZLE_GENERATOR_URL }}
+      PUZZLE_GENERATOR_API_KEY: ${{ secrets.PUZZLE_GENERATOR_API_KEY }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+      E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
 
+    steps:
+      - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
 
+      - name: Install Dependencies
+        run: npm ci
 
-      
+      - name: Install Linux native optional deps
+        run: |
+          LIGHTNINGCSS_VERSION=$(node -p "require('./package-lock.json').packages['node_modules/lightningcss'].version")
+          OXIDE_VERSION=$(node -p "require('./package-lock.json').packages['node_modules/@tailwindcss/oxide'].version")
+          npm install --no-save "lightningcss-linux-x64-gnu@${LIGHTNINGCSS_VERSION}" "@tailwindcss/oxide-linux-x64-gnu@${OXIDE_VERSION}"
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      # S07 + existing E2E suites — 2 workers, traces on failure
+      - name: E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 30
+
+      - name: Notify Slack on E2E failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":x: E2E tests failed on *${{ github.ref_name }}* — job `e2e`\nCommit: ${{ github.sha }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View job log>"
+            }

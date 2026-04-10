@@ -168,6 +168,35 @@ describe("POST /api/solves", () => {
     });
   });
 
+  it("returns 400 when the solution is invalid (TC02)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:10.000Z"));
+
+    authMock.mockResolvedValue({ user: { id: "user-1" } });
+    checkRateLimitMock.mockResolvedValue({ limited: false });
+    verifyStartTokenMock.mockResolvedValue({
+      userId: "user-1",
+      puzzleId: validPayload.puzzleId,
+      startedAt: "2026-01-01T00:00:04.000Z",
+      expiresAt: "2026-01-02T00:00:04.000Z",
+    });
+    puzzleFindUniqueMock.mockResolvedValue({
+      id: validPayload.puzzleId,
+      size: 1,
+      grid: [[0]],
+    });
+    // isSolved returns false — queens are in conflict
+    isSolvedMock.mockReturnValue(false);
+
+    const response = await POST(makeRequest(validPayload));
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBeDefined();
+    // No DB write must have happened
+    expect(solveCreateMock).not.toHaveBeenCalled();
+  });
+
   it("returns existing solve idempotently", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:10.000Z"));
